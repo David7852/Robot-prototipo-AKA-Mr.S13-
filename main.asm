@@ -260,10 +260,25 @@ add r6,r4
 ret
 ;fin
 
-;Rutina para generar retardo de mas de 0,02 segundos a 20 mhz
-;(8*0,00000005)(256)(256)=0.022
-;(9*0,00000005)(256)(256)=0.029
-;(13(0.00000005))(256)(256)=0.0425984
+;realiza 256 veces las rutinas wait02,03 o 04. siendo 
+;02->5.12s
+;03->7.68s
+;04->10.24s
+wait:
+nop
+ldi r3,0xff
+jmp wait0
+
+wait0:
+nop
+subi r3,1
+brne wait003;cambiar;
+ret
+
+;Rutinas para generar retardos a 20 mhz
+;002 (8*0,00000005)(256)(256)=0.022
+;003 (9*0,00000005)(256)(256)=0.029
+;004 (13(0.00000005))(256)(256)=0.042
 wait002:
 nop
 ldi r4,0xff
@@ -274,7 +289,7 @@ nop
 ldi r5,0xff
 subi r4,1
 brne wait02B
-ret
+rjmp wait02A
 
 wait02B:
 nop
@@ -296,7 +311,7 @@ nop
 ldi r5,0xff
 subi r4,1
 brne wait03B
-ret
+rjmp wait03A
 
 wait03B:
 nop
@@ -319,7 +334,7 @@ nop
 ldi r5,0xff
 subi r4,1
 brne wait04B
-ret
+rjmp wait04A
 
 wait03B:
 nop
@@ -336,7 +351,6 @@ nop
 breq wait04A
 rjmp wait04B 
 
-
 ;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
 stindi:
 nop
@@ -347,7 +361,7 @@ com r22
 nop
 cpi r22,0
 breq stindi
-	;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
+;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
 cpi r22,2
 breq setsecA
 jmp setsecB
