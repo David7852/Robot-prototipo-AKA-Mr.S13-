@@ -28,7 +28,7 @@
 
 start:
 nop
-ldi r3,0
+ldi r3,0;initial setup port
 out ddrd,r3
 out ddrf,r3
 out ddrc,r3
@@ -39,7 +39,7 @@ nop
 com r20
 in r21, pind
 nop
-com r21
+com r21;end of initial setup
 cp r20,r3
 brne startA
 cpse r21,r3
@@ -100,9 +100,6 @@ setstartA:
 nop
 mov r0,r3
 mov r6,r0
-ldi r3,0
-ldi r4,0
-ldi r5,0
 call getxy
 jmp deduindi
 
@@ -112,9 +109,6 @@ ldi r4,8
 add r3,r4
 mov r0,r3
 mov r6,r0
-ldi r3,0
-ldi r4,0
-ldi r5,0
 call getxy
 mov r1,r4
 mov r2,r5
@@ -122,8 +116,15 @@ jmp stindi
 ;fin de rutinas de deteccion de objeto
 
 ;obtener las coordenadas xy de una casilla
-;el valor de la casilla a buscar debe estar guardado en r6, el X y Y resultado se guardara en r4 y r5. estos registros deben ser limpiados prev
+;el valor de la casilla a buscar debe estar guardado en r6, el X y Y resultado se guardara en r4 y r5.
 getxy:
+nop
+ldi r3,0
+ldi r4,0
+ldi r5,0
+rjmp subgetxy
+
+subgetxy:
 nop
 cpse r3,r6
 jmp loopxy
@@ -134,13 +135,13 @@ cpi r4,3
 breq eqloopxy
 inc r4
 inc r3
-jmp getxy 
+jmp subgetxy 
 eqloopxy:
 nop
 inc r5
 ldi r4,0
 inc r3
-jmp getxy
+jmp subgetxy
 ;fin
 
 ;obtener el valor actual de una casilla N
@@ -260,25 +261,10 @@ add r6,r4
 ret
 ;fin
 
-;realiza 256 veces las rutinas wait02,03 o 04. siendo 
-;02->5.12s
-;03->7.68s
-;04->10.24s
-wait:
-nop
-ldi r3,0xff
-jmp wait0
-
-wait0:
-nop
-subi r3,1
-brne wait003;cambiar;
-ret
-
 ;Rutinas para generar retardos a 20 mhz
-;002 (8*0,00000005)(256)(256)=0.022
+;002 (7*0,00000005)(256)(256)=0.022
 ;003 (9*0,00000005)(256)(256)=0.029
-;004 (13(0.00000005))(256)(256)=0.042
+;004 (12(0.00000005))(256)(256)=0.039
 wait002:
 nop
 ldi r4,0xff
@@ -289,12 +275,11 @@ nop
 ldi r5,0xff
 subi r4,1
 brne wait02B
-rjmp wait02A
+ret
 
 wait02B:
 nop
 subi r5,1
-nop
 nop
 nop
 nop
@@ -311,7 +296,7 @@ nop
 ldi r5,0xff
 subi r4,1
 brne wait03B
-rjmp wait03A
+ret
 
 wait03B:
 nop
@@ -334,9 +319,9 @@ nop
 ldi r5,0xff
 subi r4,1
 brne wait04B
-rjmp wait04A
+ret
 
-wait03B:
+wait04B:
 nop
 subi r5,1
 nop
@@ -347,118 +332,64 @@ nop
 nop
 nop
 nop
-nop
 breq wait04A
 rjmp wait04B 
+;fin
 
-;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
-stindi:
+;rutina de espera.
+;cada 0,022 o 0,029 o 0,039 seg va a revisar si algun borde se encendio
+;retrasa el carro 5.6 seg, 7,4 seg, 9,9 seg respectivamente
+esperanto:
 nop
-call pasoadel
-in r22, pinf
+ldi r3,0xff
+rjmp wait00
+
+wait00:
 nop
-com r22
+call wait003;retraso de 0.029
+in r22,pinf
 nop
-cpi r22,0
-breq stindi
-;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
-cpi r22,2
-breq setsecA
-jmp setsecB
+com r22 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
+SBRC r22,0 ;si el pin 0 NO es 0, salta, si lo es ignora
+rjmp setsecA
+sbrc r22,1 ;si el pin 1 NO es 0, salta, si lo es ignora
+rjmp setsecB
+subi r3,1
+breq resolution
+rjmp wait00
+;fin de rutina de espera
 
 setsecA:
 nop
 ldi r8,0
 ldi r11,0
-jmp stindiA
+jmp deteccion
 
 setsecB:
 nop
 ldi r8,1
 ldi r11,1
-jmp stindiB
+jmp deteccion
 
-	;mover hasta encender una casilla dentro del tablero en mi sector
-stindiA:
+;deteccion de en que casilla estoy
+deteccion:
 nop
-call pasoadel
-in r20, pinc
-nop
-com r20
-cpi r20,0
-breq stindiA
-ldi r6,0
-SBRC r20,0
-jmp stindiAA
-inc r6
-SBRC r20,1
-jmp stindiAA
-inc r6
-SBRC r20,2
-jmp stindiAA
-inc r6
-SBRC r20,3
-jmp stindiAA
-inc r6
-SBRC r20,4
-jmp stindiAA
-inc r6
-SBRC r20,5
-jmp stindiAA
-inc r6
-SBRC r20,6
-jmp stindiAA
-inc r6
-jmp stindiAA
 
-stindiAA:
-nop
-call getxy
-mov r9,r4
-mov r10,r5
-jmp deducir
 
-stindiB:
-nop
-call pasoadel
-in r21, pind
-nop
-com r21
-cpi r21,0
-breq stindiB
-ldi r6,0
-SBRC r21,0
-jmp stindiBB
-inc r6
-SBRC r21,1
-jmp stindiBB
-inc r6
-SBRC r21,2
-jmp stindiBB
-inc r6
-SBRC r21,3
-jmp stindiBB
-inc r6
-SBRC r21,4
-jmp stindiBB
-inc r6
-SBRC r21,5
-jmp stindiBB
-inc r6
-SBRC r21,6
-jmp stindiBB
-inc r6
-jmp stindiBB
 
-stindiBB:
+;resolucion de conflictos ya que alguien ha decidido que quiere copiarse de nosotros, razon por la cual su bastardo carro debe ser aniquilado sin clemencia.
+resolution:
 nop
-ldi r4,8
-add r6,r4
-call getxy
-mov r9,r4
-mov r10,r5
-jmp deducir
-;fin
+
+
+
+
+
+
+
+
+
+
 
 ;deducir la proxima casilla a moder.
 deducir:
@@ -617,3 +548,114 @@ jmp gostop
 gostop:
 nop
 jmp gostop
+
+
+
+
+
+
+
+
+
+
+
+
+;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
+stindi:
+nop
+call pasoadel
+in r22, pinf
+nop
+com r22
+nop
+cpi r22,0
+breq stindi
+;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
+cpi r22,2
+breq setsecA
+jmp setsecB
+
+
+
+	;mover hasta encender una casilla dentro del tablero en mi sector
+stindiA:
+nop
+call pasoadel
+in r20, pinc
+nop
+com r20
+cpi r20,0
+breq stindiA
+ldi r6,0
+SBRC r20,0
+jmp stindiAA
+inc r6
+SBRC r20,1
+jmp stindiAA
+inc r6
+SBRC r20,2
+jmp stindiAA
+inc r6
+SBRC r20,3
+jmp stindiAA
+inc r6
+SBRC r20,4
+jmp stindiAA
+inc r6
+SBRC r20,5
+jmp stindiAA
+inc r6
+SBRC r20,6
+jmp stindiAA
+inc r6
+jmp stindiAA
+
+stindiAA:
+nop
+call getxy
+mov r9,r4
+mov r10,r5
+jmp deducir
+
+stindiB:
+nop
+call pasoadel
+in r21, pind
+nop
+com r21
+cpi r21,0
+breq stindiB
+ldi r6,0
+SBRC r21,0
+jmp stindiBB
+inc r6
+SBRC r21,1
+jmp stindiBB
+inc r6
+SBRC r21,2
+jmp stindiBB
+inc r6
+SBRC r21,3
+jmp stindiBB
+inc r6
+SBRC r21,4
+jmp stindiBB
+inc r6
+SBRC r21,5
+jmp stindiBB
+inc r6
+SBRC r21,6
+jmp stindiBB
+inc r6
+jmp stindiBB
+
+stindiBB:
+nop
+ldi r4,8
+add r6,r4
+call getxy
+mov r9,r4
+mov r10,r5
+jmp deducir
+;fin
+
