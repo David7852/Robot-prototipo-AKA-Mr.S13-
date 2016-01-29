@@ -261,28 +261,80 @@ ret
 ;fin
 
 ;Rutina para generar retardo de mas de 0,02 segundos a 20 mhz
-;(8*0,00000005)(256)(256)=0.0229376
+;(8*0,00000005)(256)(256)=0.022
+;(9*0,00000005)(256)(256)=0.029
+;(13(0.00000005))(256)(256)=0.0425984
 wait002:
 nop
 ldi r4,0xff
-jmp waitA
+jmp wait02A
 
-waitA:
+wait02A:
 nop
 ldi r5,0xff
 subi r4,1
-brne waitB
+brne wait02B
 ret
 
-waitB:
+wait02B:
 nop
 subi r5,1
-subi r5,0
-subi r5,0
-subi r5,0
-subi r5,0
-breq waitA
-rjmp waitB 
+nop
+nop
+nop
+nop
+breq wait02A
+rjmp wait02B 
+
+wait003:
+nop
+ldi r4,0xff
+jmp wait03A
+
+wait03A:
+nop
+ldi r5,0xff
+subi r4,1
+brne wait03B
+ret
+
+wait03B:
+nop
+subi r5,1
+nop
+nop
+nop
+nop
+nop
+breq wait03A
+rjmp wait03B 
+
+wait004:
+nop
+ldi r4,0xff
+jmp wait04A
+
+wait04A:
+nop
+ldi r5,0xff
+subi r4,1
+brne wait04B
+ret
+
+wait03B:
+nop
+subi r5,1
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+breq wait04A
+rjmp wait04B 
 
 
 ;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
@@ -521,7 +573,6 @@ breq fordward
 dec r3
 jmp turnr
 ;fin rutinas deducir
-
 
 GOBACK:
 nop
