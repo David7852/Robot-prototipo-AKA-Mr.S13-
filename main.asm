@@ -32,7 +32,7 @@ ldi r3,0;initial setup port
 out ddrd,r3
 out ddrf,r3
 out ddrc,r3
-ldi r3,1
+ldi r3,0xff
 out ddrb,r3
 in r20, pinc
 nop
@@ -560,6 +560,9 @@ jmp gostop
 
 
 
+
+/*deprecated 
+
 ;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
 stindi:
 nop
@@ -659,3 +662,4 @@ mov r10,r5
 jmp deducir
 ;fin
 
+*/
