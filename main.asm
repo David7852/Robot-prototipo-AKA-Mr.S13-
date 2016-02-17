@@ -4,6 +4,7 @@
 ;r3 = I/O puerto D (sector B)
 ;r4 = I/O puerto F (Bordes bit 0= A horizontal, bit 1= B horizontal, bit 2 = derecha, bit 3 = izquierda )
 ;r5 = I/O puerto B (motores)
+;r6 = angulo del vehiculo
 ;.......
 ;Variables del sistema
 ;r16 = objeto (# casilla)
@@ -14,7 +15,7 @@
 ;r21 = aux 3
 ;r22 = aux 4 (N casilla en busqueda o N de la secuencia)
 ;r23 = cuerda (decimas de segundo, o multiplicador de decimas nescesarias para una distancia especifica) 
-;r24 = sectores (primeros 4 bits: 0000 A, 0001 B. ultimos 4 bits: 0000 derecha, 1000 izquierda)
+;r24 = sectores (primeros 4 bits: 0000 A, 0001 B. ultimos 4 bits: 0000 derecha, 1000 izquierda, 11111111 es unknow)
 ;r25 = vector rocks 1
 ;r26 = vector rocks 2
 ;r27 = vector fall 1
@@ -30,11 +31,12 @@
 ;N13 = numero de la secuencia (solo para competencia)
 ;*** 
 .dseg
-
+#define CPU_2MHz        0x03
 .def ioa=r2
 .def iob=r3
 .def bordes=r4
 .def motores=r5
+.def angle=r6
 
 .def objn=r16
 .def objx=r17
@@ -42,7 +44,7 @@
 .def aux1=r19		             
 .def aux2=r20
 .def aux3=r21
-.def N=r22
+.def aux4=r22
 .def cuerda=r23
 .def sector=r24
 .def rocka=r25
@@ -60,7 +62,7 @@
 ;otros
 
 .cseg 
-.org 0100
+.org 0000
 ldi r19,0xff;initial setup port
 out ddrb,r19
 ldi r19,0
@@ -72,6 +74,49 @@ jmp fase1
 ;**********
 ;rutinas de asistencia
 ;**********
+;detectar cambios en los sectores especificados
+;el estado anterior del puerto a buscar debe estar guardado en aux4, el resultado sera escrito en aux1
+;si no hay cambios, aux1 seria igual a 0xff
+getchanga:
+in aux2,pinc;lee el estado al momento
+com aux2
+eor aux2,aux4
+ldi aux1,0
+rjmp getchang
+
+getchang:
+SBRC aux2,0
+ret
+inc aux1
+SBRC aux2,1
+ret
+inc aux1
+SBRC aux2,2
+ret
+inc aux1
+SBRC aux2,3
+ret
+inc aux1
+SBRC aux2,4
+ret
+inc aux1
+SBRC aux2,5
+ret
+inc aux1
+SBRC aux2,6
+ret
+inc aux1
+SBRC aux2,7
+ret
+ldi aux1,0xff
+ret
+
+getchangb:
+in aux2,pind;lee el estado al momento
+eor aux2,aux4
+ldi aux1,0
+rjmp getchang
+
 ;obtener las coordenadas xy de una casilla
 ;(el valor de la casilla a buscar debe estar guardado en r22, el X y Y resultado se guardara en r20 y r21.)
 getxy:
@@ -199,9 +244,9 @@ add r22,r20
 ret
 
 ;Rutinas para generar retardos a (20 mhz)
-;20 (7*0,00000005)(256)(256)=0.022seg
+;20ms (7*0.0000005)(256)(26)=0.022seg
 wait20:
-ldi r20,0xff
+ldi r20,26
 jmp wait20A
 wait20A:
 ldi r21,0xff
@@ -215,9 +260,9 @@ nop
 nop
 breq wait20A
 rjmp wait20B 
-;30 (9*0,00000005)(256)(256)=0.029seg
+;30 (9*0.0000005)(256)(26)=0.029seg
 wait30:
-ldi r20,0xff
+ldi r20,26
 jmp wait30A
 wait30A:
 ldi r21,0xff
@@ -233,9 +278,9 @@ nop
 nop
 breq wait30A
 rjmp wait30B 
-;40 (12(0.00000005))(256)(256)=0.039seg
+;40 (12(0.0000005))(256)(26)=0.039seg
 wait40:
-ldi r20,0xff
+ldi r20,26
 jmp wait40A
 wait40A:
 ldi r21,0xff
@@ -298,7 +343,6 @@ and motores,aux1
 out portb,motores
 call wait20;(usar siempre el menor tiempo de espera)
 ret
-
 ;*********
 ;fin
 
@@ -310,6 +354,7 @@ rjmp fase2
 ;****
 ;acondicionamiento
 Fase2:
+call calcuerda
 call flare
 call fillrocks
 call fillfalls
@@ -318,6 +363,8 @@ rjmp fase3
 ;toma de decisiones
 fase3:
 
+call check
+;****
 
 seto:;(iniciar puertos y )
 in r2, pinc
@@ -393,7 +440,6 @@ call getxy
 mov r17,r20
 mov r18,r21
 ret
-
 ;rutina de espera.(retrasa el carro 5.6 seg, 7,4 seg, 9,9 seg respectivamente)
 ;cada 22 o 29 o 39 milisegundos se va a revisar si algun borde se encendio
 esperanto:
@@ -411,13 +457,82 @@ rjmp setsecB
 rjmp resolution
 setsecA:
 ldi r24,0
-ldi r27,0
 ret
 setsecB:
 ldi r24,1
-ldi r27,1
 ret
 ;fin de rutina de espera
-
-resolution:;(en caso de que algun otro carro este esperando o nosotros estemos solos)
+resolution:;(en caso de que algun otro carro TAMBIEN (malditos) este esperando o nosotros estemos solos)
+ldi sector,0xff
 ret ;(en caso de estar solos en la pista, simplemente sale y comienza a explorar)
+;****
+
+sunless:
+call adelante
+in bordes,pinf
+nop
+com bordes
+ldi aux1,0
+cp bordes,aux1
+breq sunless
+ldi aux1,1
+cp bordes, aux1
+breq setsecA
+ldi aux1,2
+cp bordes, aux1
+breq setsecB 
+
+flare:
+ldi aux1,0xff
+cpse sector,aux1
+call launch
+call sunless
+call launch
+
+launch: ;mover hasta que: se encienda un borde diferente al de partida, se encienda un sensor, retroceder.
+in ioa,pina
+com ioa
+in iob,pinb
+com iob
+call adelante
+;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0.
+;					 si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0.
+; si el registro es 0, ir a extingue. 
+in bordes,pinf
+com bordes
+ldi aux2,0
+cpse sector,aux1
+cbi bordes,1
+ldi aux2,1
+cpse sector,aux1
+cbi bordes,0
+cpi bordes,0
+breq extingue
+;comprobar si algun sensonr encendio
+mov aux4,ioa
+call getchanga
+ldi aux2,0xff
+cpse aux1,aux2
+breq extingue
+mov aux4,iob
+call getchangb
+ldi aux2,0xff
+cpse aux1,aux2
+breq extingue
+rjmp launch
+
+extingue: ;determina los 4 bits restantes del registro sector y retrocede el carro
+;primero: determinar si fueron los bordes o los sensores (que deberian conservar el valor que envio el pc a extingue)
+;segundo: ya sean los bordes o los sensores, evaluar si me encuentro mirando al sector izquierdo o derecho.
+;SI no me es posible concluir eso (se encendio el borde horizontal contrario): evaluar la posicion del objeto y mi sector de arranque para
+;eleguir si deberia moverme a la derecha o izquierda. realizar un giro de 5 grados y hacer un salto a launch.
+;tercero: tras esto hecho, retroceder hasta que se encienda mi borde horizontal de arranque
+;cuando eso ocurra detenerme y retornar
+;
+
+calcuerda:
+fillrocks:
+fillfalls:
+check:
+
+
