@@ -30,12 +30,23 @@
 .org 0000
 
  start:
+ ldi r19,0xff
+ call waitto
  ldi aux3,0xff
  out ddrb,r3
  ldi aux3,0x03
  out ddrd,r3
  ldi aux3,0
  out portb,r3
+ rjmp rutinatest
+
+waitto:
+call wait30;cambiar aca cual se quiere si 20,30 o 40
+dec r19
+cpi r19,0
+brne waitto
+ret
+
 
  rutinatest:
  in cua, pind
