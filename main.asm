@@ -79,7 +79,6 @@ jmp fase1
 ;si no hay cambios, aux1 seria igual a 0xff
 getchanga:
 in aux2,pinc;lee el estado al momento
-com aux2
 eor aux2,aux4
 ldi aux1,0
 rjmp getchang
@@ -150,7 +149,6 @@ jmp getvalA
 getvalB:
 in r3,pind
 nop
-com r3
 ldi r20,8
 SBRC r3,0
 ldi r19,1
@@ -194,7 +192,6 @@ ret
 getvalA:
 in r2,pinc
 nop
-com r2
 ldi r20,0
 SBRC r2,0
 ldi r19,1
@@ -369,10 +366,8 @@ call check
 seto:;(iniciar puertos y )
 in r2, pinc
 nop
-com r2
 in r3, pind
 nop
-com r3
 cp r2,r19
 brne startA
 cpse r3,r19
@@ -447,6 +442,7 @@ ldi r19,0xff
 rjmp waitto
 waitto:
 call wait30;cambiar aca cual se quiere si 20,30 o 40
+dec r19
 in r4,pinf
 nop
 com r4 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
@@ -454,6 +450,8 @@ SBRC r4,0 ;si el pin 0 NO es 0, salta, si lo es ignora
 rjmp setsecA
 sbrc r4,1 ;si el pin 1 NO es 0, salta, si lo es ignora
 rjmp setsecB
+cpi r19,0
+breq waitto
 rjmp resolution
 setsecA:
 ldi r24,0
@@ -471,7 +469,6 @@ sunless:
 call adelante
 in bordes,pinf
 nop
-com bordes
 ldi aux1,0
 cp bordes,aux1
 breq sunless
@@ -481,32 +478,31 @@ breq setsecA
 ldi aux1,2
 cp bordes, aux1
 breq setsecB 
+ret
 
 flare:
 ldi aux1,0xff
 cpse sector,aux1
-call launch
+rjmp launch
 call sunless
-call launch
+rjmp launch
 
 launch: ;mover hasta que: se encienda un borde diferente al de partida, se encienda un sensor, retroceder.
 in ioa,pina
-com ioa
 in iob,pinb
-com iob
 call adelante
 ;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0.
 ;					 si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0.
 ; si el registro es 0, ir a extingue. 
 in bordes,pinf
-com bordes
+mov aux3,bordes
 ldi aux2,0
-cpse sector,aux1
-cbi bordes,1
+cpse sector,aux2
+andi aux3, 0xfd
 ldi aux2,1
-cpse sector,aux1
-cbi bordes,0
-cpi bordes,0
+cpse sector,aux2
+andi aux3, 0xfe
+cpi aux3,0
 breq extingue
 ;comprobar si algun sensonr encendio
 mov aux4,ioa
@@ -527,7 +523,7 @@ extingue: ;determina los 4 bits restantes del registro sector y retrocede el car
 ;SI no me es posible concluir eso (se encendio el borde horizontal contrario): evaluar la posicion del objeto y mi sector de arranque para
 ;eleguir si deberia moverme a la derecha o izquierda. realizar un giro de 5 grados y hacer un salto a launch.
 ;tercero: tras esto hecho, retroceder hasta que se encienda mi borde horizontal de arranque
-;cuando eso ocurra detenerme y retornar
+;cuando eso ocurra detenerme y retornar EXTINGUE CONTIENE EL RET A FASE 2
 ;
 
 calcuerda:
