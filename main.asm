@@ -22,7 +22,7 @@
 ;r28 = vector fall 2
 ;r29 = vector cuerda 1
 ;r30 = vector cuerda 2
-;r31 = vector cuerda 3
+;r31 = sentido giro
 ;.......
 ;constantes
 ;step = numero de veces que debe repetirse un retardo de X milisegundos para avanzar 8cm (media casilla)
@@ -53,7 +53,7 @@
 .def fallb=r28
 .def cua=r29
 .def cub=r30
-.def cuc=r31
+.def gir=r31
 
 .equ step=0x00
 .equ giro=0x00
@@ -489,34 +489,24 @@ rjmp launch
 call sunless
 rjmp launch
 
-launch: ;mover hasta que: se encienda un borde diferente al de partida o se encienda un sensor.
+launch: ;mover hasta que: se encienda un borde vertical o se encienda un sensor.
 call adelante
-;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0.
-;					 si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0.
-; si el registro no es 0, ir a extingub. 
-in bordes,pinf
-mov aux3,bordes
-ldi aux2,0
-cpse sector,aux2
-andi aux3, 0xfd;negar 1
-ldi aux2,1
-cpse sector,aux2;negar 0
-andi aux3, 0xfe
-cpi aux3,0
-brne extinbo
 ;comprobar si algun sensor encendio
 mov aux4,ioa
 call getchanga
 ldi aux2,0xff
 cpse aux1,aux2
-breq extingua
+breq exting
 mov aux4,iob
 call getchangb
 ldi aux2,0xff
 cpse aux1,aux2
-breq extingub
-rjmp launch
-
+breq exting
+;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0.
+;					 si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0.
+; si el registro no es 0, ir a extingub. 
+in bordes,pinf
+rjmp extinbo
 ;primero: determinar si fueron los bordes o los sensores (que deberian conservar el valor que envio a extingue)
 extinbo:
 mov aux3,bordes
@@ -526,42 +516,81 @@ breq bordea
 ldi aux2,1
 cp sector,aux2;si estoy en b
 breq bordeb
+
 bordea:
 SBRC aux3,3
-andi sector,0x0f
+andi sector,0x0f;mirando derecha
+SBRC aux3,3
+rjmp setder
 SBRC aux3,3
 rjmp extingue
 SBRC aux3,2
-ori sector,0x80
+ori sector,0x80;mirando izquierda
+SBRC aux3,2
+rjmp setizq
 SBRC aux3,2
 rjmp extingue
-jmp blindext
+rjmp launch
 bordeb:
 SBRC aux3,3
-ori sector,0x80
+ori sector,0x80;mirando derecha
+SBRC aux3,3
+rjmp setder
 SBRC aux3,3
 rjmp extingue
 SBRC aux3,2
-andi sector,0x0f
+andi sector,0x0f;mirando izquierda
+SBRC aux3,2
+rjmp setizq
 SBRC aux3,2
 rjmp extingue
-jmp blindext
+rjmp launch
 
-extingua:
+setder:
+ldi gir,0
+rjmp extingue
+setizq:
+ldi gir,1
+rjmp extingue
 
-extingub:
+exting:
+ldi aux2,0;si estoy en a
+cp sector,aux2
+breq extinga
+ldi aux2,1
+cp sector,aux2;si estoy en b
+breq extingb
 
+extinga:
+mov aux4,aux1
+call getxy
+cp objx,aux2
+BRGE setizq
+rjmp setder
 
+extingb:
+mov aux4,aux1
+call getxy
+cp objx,aux2
+BRGE setder
+rjmp setizq
 
-extingue: ;determina los 4 bits restantes del registro sector y retrocede el carro
-;segundo: ya sean los bordes o los sensores, evaluar si me encuentro mirando al sector izquierdo o derecho.
-;SI no me es posible concluir eso (se encendio el borde horizontal contrario): evaluar la posicion del objeto y mi sector de arranque para
-;eleguir si deberia moverme a la derecha o izquierda.
-;tercero: tras esto hecho, retroceder hasta que se encienda mi borde horizontal de arranque
+extingue:
+call atras
+in bordes,pinf
+mov aux3,bordes
+mov aux1,sector
+andi aux1,0x0f
+ldi aux2,0
+cpse aux1,aux2;si estoy en sector b
+SBRC aux3,1
+ret
+ldi aux2,1
+cpse aux1,aux2;si estoy en sector a
+SBRC aux3,0
+ret
+rjmp extingue
 ;cuando eso ocurra detenerme y retornar EXTINGUE CONTIENE EL RET A FASE 2
-;
-
-blindext:
 
 calcuerda:
 fillrocks:
