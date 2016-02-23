@@ -351,8 +351,8 @@ rjmp fase2
 ;****
 ;acondicionamiento
 Fase2:
-call calcuerda
 call flare
+call calcuerda
 call fillrocks
 call fillfalls
 rjmp fase3
@@ -481,50 +481,87 @@ breq setsecB
 ret
 
 flare:
+in ioa,pina
+in iob,pinb
 ldi aux1,0xff
 cpse sector,aux1
 rjmp launch
 call sunless
 rjmp launch
 
-launch: ;mover hasta que: se encienda un borde diferente al de partida, se encienda un sensor, retroceder.
-in ioa,pina
-in iob,pinb
+launch: ;mover hasta que: se encienda un borde diferente al de partida o se encienda un sensor.
 call adelante
 ;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0.
 ;					 si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0.
-; si el registro es 0, ir a extingue. 
+; si el registro no es 0, ir a extingub. 
 in bordes,pinf
 mov aux3,bordes
 ldi aux2,0
 cpse sector,aux2
-andi aux3, 0xfd
+andi aux3, 0xfd;negar 1
 ldi aux2,1
-cpse sector,aux2
+cpse sector,aux2;negar 0
 andi aux3, 0xfe
 cpi aux3,0
-breq extingue
-;comprobar si algun sensonr encendio
+brne extinbo
+;comprobar si algun sensor encendio
 mov aux4,ioa
 call getchanga
 ldi aux2,0xff
 cpse aux1,aux2
-breq extingue
+breq extingua
 mov aux4,iob
 call getchangb
 ldi aux2,0xff
 cpse aux1,aux2
-breq extingue
+breq extingub
 rjmp launch
 
+;primero: determinar si fueron los bordes o los sensores (que deberian conservar el valor que envio a extingue)
+extinbo:
+mov aux3,bordes
+ldi aux2,0;si estoy en a
+cp sector,aux2
+breq bordea
+ldi aux2,1
+cp sector,aux2;si estoy en b
+breq bordeb
+bordea:
+SBRC aux3,3
+andi sector,0x0f
+SBRC aux3,3
+rjmp extingue
+SBRC aux3,2
+ori sector,0x80
+SBRC aux3,2
+rjmp extingue
+jmp blindext
+bordeb:
+SBRC aux3,3
+ori sector,0x80
+SBRC aux3,3
+rjmp extingue
+SBRC aux3,2
+andi sector,0x0f
+SBRC aux3,2
+rjmp extingue
+jmp blindext
+
+extingua:
+
+extingub:
+
+
+
 extingue: ;determina los 4 bits restantes del registro sector y retrocede el carro
-;primero: determinar si fueron los bordes o los sensores (que deberian conservar el valor que envio el pc a extingue)
 ;segundo: ya sean los bordes o los sensores, evaluar si me encuentro mirando al sector izquierdo o derecho.
 ;SI no me es posible concluir eso (se encendio el borde horizontal contrario): evaluar la posicion del objeto y mi sector de arranque para
-;eleguir si deberia moverme a la derecha o izquierda. realizar un giro de 5 grados y hacer un salto a launch.
+;eleguir si deberia moverme a la derecha o izquierda.
 ;tercero: tras esto hecho, retroceder hasta que se encienda mi borde horizontal de arranque
 ;cuando eso ocurra detenerme y retornar EXTINGUE CONTIENE EL RET A FASE 2
 ;
+
+blindext:
 
 calcuerda:
 fillrocks:
