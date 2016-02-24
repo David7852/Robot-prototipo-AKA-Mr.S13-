@@ -16,13 +16,13 @@
 ;r22 = aux 4 (N casilla en busqueda o N de la secuencia)
 ;r23 = cuerda (decimas de segundo, o multiplicador de decimas nescesarias para una distancia especifica) 
 ;r24 = sectores (primeros 4 bits: 0000 A, 0001 B. ultimos 4 bits: 0000 derecha, 1000 izquierda, 11111111 es unknow)
-;r25 = vector rocks 1
-;r26 = vector rocks 2
-;r27 = vector fall 1
-;r28 = vector fall 2
+;r25 = 
+;r26 = 
+;r27 = 
+;r28 = 
 ;r29 = vector cuerda 1
 ;r30 = vector cuerda 2
-;r31 = sentido giro
+;r31 = sentido giro. derecha 0, izquierda 1
 ;.......
 ;constantes
 ;step = numero de veces que debe repetirse un retardo de X milisegundos para avanzar 8cm (media casilla)
@@ -74,6 +74,58 @@ jmp fase1
 ;**********
 ;rutinas de asistencia
 ;**********
+;determinar si un sector es rock. (si sector==a && objy<sensor.y) Es roca y devuelve un 0xff en aux1, sino, 00. N de sensor a buscar en aux4
+isrocky:
+mov aux1,sector
+andi aux1,0x0f
+ldi aux2,0
+cpse aux1,aux2;si estoy en sector b
+rjmp isroca
+ldi aux2,1
+cpse aux1,aux2;si estoy en sector a
+rjmp isroco
+
+isroca:
+call getxy
+cp aux3,objy
+BRGE setis
+rjmp notis
+
+isroco:
+call getxy
+cp aux3,objy
+BRGE notis
+rjmp setis
+
+setis:
+ldi aux1,0xff
+ret
+
+notis:
+ldi aux1,0
+ret
+
+;determinar si un sector es fall. (si gir==izq && objx>sensor.x) Es roca y devuelve un 0xff en aux1, sino, 00. N de sensor a buscar en aux4
+isfall:/*ic*/;pun intended here cuz i am bored :(
+ldi aux2,0
+cpse gir,aux2;si estoy a derecha
+rjmp isfalla
+ldi aux2,1
+cpse gir,aux2;si estoy a izquierda
+rjmp isfallo
+
+isfalla:
+call getxy
+cp aux2,objx
+BRGE notis
+rjmp setis
+
+isfallo:
+call getxy
+cp aux2,objx
+BRGE setis
+rjmp notis
+
 ;detectar cambios en los sectores especificados
 ;el estado anterior del puerto a buscar debe estar guardado en aux4, el resultado sera escrito en aux1
 ;si no hay cambios, aux1 seria igual a 0xff
@@ -353,12 +405,11 @@ rjmp fase2
 Fase2:
 call flare
 call calcuerda
-call fillrocks
-call fillfalls
 rjmp fase3
 ;****
 ;toma de decisiones
 fase3:
+
 
 call check
 ;****
@@ -593,8 +644,52 @@ rjmp extingue
 ;cuando eso ocurra detenerme y retornar EXTINGUE CONTIENE EL RET A FASE 2
 
 calcuerda:
-fillrocks:
-fillfalls:
+mov aux1,sector
+mov aux3,objy
+ldi aux4,5
+sub aux4,aux3
+andi aux1,0x0f
+ldi aux2,0
+cpse aux1,aux2;si estoy en sector b
+mov cuerda, aux4
+ldi aux2,1
+cpse aux1,aux2;si estoy en sector a
+mov cuerda,objy
+ret
+
 check:
+
+
+
+
+
+
+
+
+
+/*
+fillrocks:
+ldi aux3,0
+mov aux1,sector
+andi aux1,0x0f
+ldi aux2,0
+cpse aux1,aux2;si estoy en sector b
+rjmp fillroca
+ldi aux2,1
+cpse aux1,aux2;si estoy en sector a
+rjmp fillrocb
+
+fillroca:
+cp aux3,objy
+brge setrock
+inc aux3
+cpi aux3,16
+brne fillroca
+
+setrock
+
+fillrocb:
+
+fillfalls:*/
 
 
