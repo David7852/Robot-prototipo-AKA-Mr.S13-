@@ -16,10 +16,10 @@
 ;r22 = aux 4 (N casilla en busqueda o N de la secuencia)
 ;r23 = cuerda (decimas de segundo, o multiplicador de decimas nescesarias para una distancia especifica) 
 ;r24 = sectores (primeros 4 bits: 0000 A, 0001 B. ultimos 4 bits: 0000 derecha, 1000 izquierda, 11111111 es unknow)
-;r25 = 
-;r26 = 
-;r27 = 
-;r28 = 
+;r25 = aux 5
+;r26 = aux 6
+;r27 = aux 7
+;r28 = aux 8
 ;r29 = vector cuerda 1
 ;r30 = vector cuerda 2
 ;r31 = sentido giro. derecha 0, izquierda 1
@@ -47,15 +47,15 @@
 .def aux4=r22
 .def cuerda=r23
 .def sector=r24
-.def rocka=r25
-.def rockb=r26
-.def falla=r27
-.def fallb=r28
+.def aux5=r25
+.def aux6=r26
+.def aux8=r27
+.def aux9=r28
 .def cua=r29
 .def cub=r30
 .def gir=r31
 
-.equ step=0x00
+.equ step=0x00;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un avance igual a 11.45cm (maxima inclinacion, a 45 grados es la medida del sector*1.437)
 .equ giro=0x00
 ;distancias
 ;secuencia
@@ -85,6 +85,14 @@ ldi aux2,1
 cpse aux1,aux2;si estoy en sector a
 rjmp isroco
 
+isfall:
+ldi aux2,0
+cpse gir,aux2;si estoy a derecha
+rjmp isfalla
+ldi aux2,1
+cpse gir,aux2;si estoy a izquierda
+rjmp isfallo
+
 isroca:
 call getxy
 cp aux3,objy
@@ -106,14 +114,6 @@ ldi aux1,0
 ret
 
 ;determinar si un sector es fall. (si gir==izq && objx>sensor.x) Es roca y devuelve un 0xff en aux1, sino, 00. N de sensor a buscar en aux4
-isfall:/*ic*/;pun intended here cuz i am bored :(
-ldi aux2,0
-cpse gir,aux2;si estoy a derecha
-rjmp isfalla
-ldi aux2,1
-cpse gir,aux2;si estoy a izquierda
-rjmp isfallo
-
 isfalla:
 call getxy
 cp aux2,objx
@@ -125,6 +125,36 @@ call getxy
 cp aux2,objx
 BRGE setis
 rjmp notis
+
+cuerdaout:
+ldi aux6,0
+cp aux5,cuerda
+breq setis
+inc aux5
+rjmp cuentpaso
+
+retrieve:
+ldi aux6,0
+cp aux5,cuerda
+breq setis
+inc aux5
+rjmp cuentback
+
+cuentpaso:
+ldi aux1,step
+cp aux6,aux1
+breq cuerdaout
+call adelante
+inc aux6
+rjmp cuentpaso
+
+cuentback:
+ldi aux1,step
+cp aux6,aux1
+breq cuerdaout
+call atras
+inc aux6
+rjmp cuentback
 
 ;detectar cambios en los sectores especificados
 ;el estado anterior del puerto a buscar debe estar guardado en aux4, el resultado sera escrito en aux1
@@ -356,7 +386,7 @@ and motores,aux1
 ldi aux1,0x01
 eor motores,aux1
 out portb,motores
-call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 ret
 
 derecha:
@@ -365,7 +395,7 @@ and motores,aux1
 ldi aux1,0x04
 eor motores,aux1
 out portb,motores
-call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 ret
 
 atras:
@@ -374,7 +404,7 @@ and motores,aux1
 ldi aux1,0x0a
 eor motores,aux1
 out portb,motores
-call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 ret
 
 adelante:
@@ -383,7 +413,7 @@ and motores,aux1
 ldi aux1, 0x05
 eor motores,aux1
 out portb,motores
-call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 ret
 
 parar:
@@ -409,8 +439,10 @@ rjmp fase3
 ;****
 ;toma de decisiones
 fase3:
-
-
+ldi aux5,0
+call cuerdaout
+ldi aux5,0
+call retrieve
 call check
 ;****
 
@@ -643,21 +675,30 @@ ret
 rjmp extingue
 ;cuando eso ocurra detenerme y retornar EXTINGUE CONTIENE EL RET A FASE 2
 
-calcuerda:
+calcuerda:;si a cuerda=objy*2-1 
 mov aux1,sector
 mov aux3,objy
+inc aux3
 ldi aux4,5
 sub aux4,aux3
+add aux4,aux4
+dec aux4
+add aux3,aux3
+dec aux3
 andi aux1,0x0f
 ldi aux2,0
 cpse aux1,aux2;si estoy en sector b
 mov cuerda, aux4
 ldi aux2,1
 cpse aux1,aux2;si estoy en sector a
-mov cuerda,objy
+mov cuerda,aux3
 ret
 
 check:
+
+
+
+
 
 
 

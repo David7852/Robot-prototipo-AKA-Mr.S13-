@@ -47,23 +47,65 @@ cpi r19,0
 brne waitto
 ret
 
-
  rutinatest:
  in cua, pind
  andi cua,0x03
  ldi aux1,0
- cpse cua,aux1
- call adelante
+ cp cua,aux1
+ breq adelante
  ldi aux1,3
- cpse cua,aux1
- call atras
+ cp cua,aux1
+ breq atras
  ldi aux1,1
- cpse cua,aux1
- call derecha
- ldi aux1,2
- cpse call izquierda
- rjmp rutinatest
+ cp cua,aux1
+ breq derecha
+ rjmp izquierda
 
+ ;rutinas de movimiento
+izquierda:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x01
+eor motores,aux1
+out portb,motores
+call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+rjmp rutinatest
+
+derecha:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x04
+eor motores,aux1
+out portb,motores
+call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+rjmp rutinatest
+
+atras:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x0a
+eor motores,aux1
+out portb,motores
+call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+rjmp rutinatest
+
+adelante:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1, 0x05
+eor motores,aux1
+out portb,motores
+call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+rjmp rutinatest
+
+parar:
+ldi aux1,0xf0
+and motores,aux1
+out portb,motores
+call wait20;(usar siempre el menor tiempo de espera)
+rjmp rutinatest
+;*********
+;fin
  
 ;Rutinas para generar retardos a (20 mhz)
 ;20ms (7*0.0000005)(256)(26)=0.022seg
@@ -122,48 +164,3 @@ nop
 breq wait40A
 rjmp wait40B 
 
-;rutinas de movimiento
-izquierda:
-ldi aux1,0xf0
-and motores,aux1
-ldi aux1,0x01
-eor motores,aux1
-out portb,motores
-call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
-ret
-
-derecha:
-ldi aux1,0xf0
-and motores,aux1
-ldi aux1,0x04
-eor motores,aux1
-out portb,motores
-call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
-ret
-
-atras:
-ldi aux1,0xf0
-and motores,aux1
-ldi aux1,0x0a
-eor motores,aux1
-out portb,motores
-call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
-ret
-
-adelante:
-ldi aux1,0xf0
-and motores,aux1
-ldi aux1, 0x05
-eor motores,aux1
-out portb,motores
-call wait30;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
-ret
-
-parar:
-ldi aux1,0xf0
-and motores,aux1
-out portb,motores
-call wait20;(usar siempre el menor tiempo de espera)
-ret
-;*********
-;fin
