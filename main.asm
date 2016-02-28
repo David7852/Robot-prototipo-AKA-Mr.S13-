@@ -56,7 +56,7 @@
 .def gir=r31
 
 .equ step=0x00;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un avance igual a 11.45cm (maxima inclinacion, a 45 grados es la medida del sector*1.437)
-.equ giro=0x00
+.equ giro=0x00;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un desvio igual a 5 grados.
 ;distancias
 ;secuencia
 ;otros
@@ -695,18 +695,60 @@ mov cuerda,aux3
 ret
 
 check:
+mov aux4, objn
+call getval
+cpi aux1,0
+breq stopit
+call planit
+ldi aux2,1
+cpse gir,aux2
+call derechagir
+ldi aux2,0
+cpse gir,aux2
+call izquiergir
+ret
 
+stopit:
+nop
+rjmp stopit
 
+planit:;calcula cuanto girar, si 5,10,15,etc.
+ldi aux1,1
+ret
 
+derechagir:
+ldi aux2,0
+cpse aux1,aux2
+rjmp girder
+ret
 
+girder:
+inc aux2
+ldi aux3,giro
+inc aux3
+cpse aux2,aux3
+call derecha
+cpse aux2,aux3
+rjmp girder
+dec aux1
+rjmp derechagir
 
+izquiergir:
+ldi aux2,0
+cpse aux1,aux2
+rjmp girizq
+ret
 
-
-
-
-
-
-
+girizq:
+inc aux2
+ldi aux3,giro
+inc aux3
+cpse aux2,aux3
+call izquierda
+cpse aux2,aux3
+rjmp girder
+dec aux1
+rjmp izquiergir
 
 /*
 fillrocks:
