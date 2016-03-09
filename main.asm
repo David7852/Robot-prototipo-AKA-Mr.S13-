@@ -528,7 +528,7 @@ call wait30;cambiar aca cual se quiere si 20,30 o 40
 dec r19
 in r4,pinf
 nop
-com r4 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
+;com r4 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
 SBRC r4,0 ;si el pin 0 NO es 0, salta, si lo es ignora
 rjmp setsecA
 sbrc r4,1 ;si el pin 1 NO es 0, salta, si lo es ignora
@@ -574,13 +574,16 @@ rjmp launch
 
 launch: ;mover hasta que: se encienda un borde vertical o se encienda un sensor.
 call adelante
-;comprobar si algun sensor encendio
+;comprobar si algun sensor encendio en mi sector (solo revisa mi sector ya que asi evito falsos positivos con el rival)
+ldi aux2,1 ;si estoy en b
+cpse sector,aux2
 mov aux4,ioa
+cpse sector,aux2
 call getchanga
-ldi aux2,0xff
-cpse aux1,aux2
-breq exting
+ldi aux2,0
+cpse sector,aux2
 mov aux4,iob
+cpse sector,aux2
 call getchangb
 ldi aux2,0xff
 cpse aux1,aux2
@@ -590,7 +593,7 @@ breq exting
 ; si el registro no es 0, ir a extingub. 
 in bordes,pinf
 rjmp extinbo
-;primero: determinar si fueron los bordes o los sensores (que deberian conservar el valor que envio a extingue)
+;determinar si fueron los bordes o los sensores (que deberian conservar el valor que envio a extingue)
 extinbo:
 mov aux3,bordes
 ldi aux2,0;si estoy en a
