@@ -22,29 +22,44 @@
 ;r4 = I/O puerto F (Bordes / )
 ;r5 = I/O puerto B (motores)
 ;***  
+.dseg
+.def ioa=r2
+.def iob=r3
+.def bordes=r4
+.def motores=r5
+.def angle=r6
+
+.def objn=r16
+.def objx=r17
+.def objy=r18
+.def aux1=r19		             
+.def aux2=r20
+.def aux3=r21
+.def aux4=r22
 
 .cseg 
+.include "usb1286def.inc"
 .org 0000
 
 start:;lee la posicion de objeto
-nop
-ldi r19,0;initial setup port
+nop;initial setup port
+ldi r23,41
+ldi r19,0xff
+out ddrb,r19
+ldi r19,0
 out ddrd,r19
 out ddrf,r19
 out ddrc,r19
-ldi r19,0xff
-out ddrb,r19
 in r2, pinc
 nop
-com r2
 in r3, pind
 nop
-com r3;end of initial setup
+;end of initial setup
 cp r2,r19
 brne startA
 cpse r3,r19
 jmp startB
-jmp start
+rjmp start
 
 startA:;setea la posicion del objeto si esta en sector A
 nop
@@ -70,6 +85,116 @@ SBRC r2,6
 jmp setstartA
 inc r19
 jmp setstartA
+
+
+;Rutinas para generar retardos a (20 mhz)
+;20ms (7*0.0000005)(256)(26)=0.022seg
+waitto:
+inc r19
+cpse r19,r23
+rjmp waitto
+ret
+
+wait20:
+ldi r20,26
+jmp wait20A
+wait20A:
+ldi r21,0xff
+subi r20,1
+brne wait20B
+ret
+wait20B:
+subi r21,1
+nop
+nop
+nop
+breq wait20A
+rjmp wait20B 
+;30 (9*0.0000005)(256)(26)=0.029seg
+wait30:
+ldi r20,26
+jmp wait30A
+wait30A:
+ldi r21,0xff
+subi r20,1
+brne wait30B
+ret
+wait30B:
+subi r21,1
+nop
+nop
+nop
+nop
+nop
+breq wait30A
+rjmp wait30B 
+;40 (12(0.0000005))(256)(26)=0.039seg
+wait40:
+ldi r20,26
+jmp wait40A
+wait40A:
+ldi r21,0xff
+subi r20,1
+brne wait40B
+ret
+wait40B:
+subi r21,1
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+breq wait40A
+rjmp wait40B 
+
+;rutinas de movimiento
+pasoizq:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x01
+eor motores,aux1
+out portb,motores
+call waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+ret
+
+pasoder:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x04
+eor motores,aux1
+out portb,motores
+ldi r19,0
+call waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+ret
+
+pasoatra:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x0a
+eor motores,aux1
+out portb,motores
+ldi r19,0
+call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+ret
+
+pasoadel:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1, 0x05
+eor motores,aux1
+out portb,motores
+call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+ret
+
+parar:
+ldi aux1,0xf0
+and motores,aux1
+out portb,motores
+call wait20;(usar siempre el menor tiempo de espera)
+ret
 
 startB:;setea la posicion del objeto si esta en sector B
 nop
@@ -103,7 +228,7 @@ mov r22,r16
 call getxy
 mov r17,r20
 mov r18,r21
-jmp stindi;rutina de solucion de sector
+rjmp stindi;rutina de solucion de sector
 
 setstartB:
 nop
@@ -114,7 +239,7 @@ mov r22,r16
 call getxy
 mov r17,r20
 mov r18,r21
-jmp stindi
+rjmp stindi
 ;fin de rutinas de deteccion de objeto
 
 ;obtener las coordenadas xy de una casilla
@@ -153,7 +278,6 @@ jmp getvalA
 getvalB:
 in r3,pind
 nop
-com r3
 ldi r20,8
 SBRC r3,0
 ldi r19,1
@@ -197,7 +321,6 @@ ret
 getvalA:
 in r2,pinc
 nop
-com r2
 ldi r20,0
 SBRC r2,0
 ldi r19,1
@@ -247,129 +370,10 @@ add r22,r20
 ret
 ;fin
 
-;Rutinas para generar retardos a 20 mhz
-;002 (7*0,00000005)(256)(256)=0.022
-;003 (9*0,00000005)(256)(256)=0.029
-;004 (12(0.00000005))(256)(256)=0.039
-wait002:
-ldi r20,0xff
-jmp wait02A
-
-wait02A:
-ldi r21,0xff
-subi r20,1
-brne wait02B
-ret
-
-wait02B:
-subi r21,1
-nop
-nop
-nop
-breq wait02A
-rjmp wait02B 
-
-wait003:
-ldi r20,0xff
-jmp wait03A
-
-wait03A:
-ldi r21,0xff
-subi r20,1
-brne wait03B
-ret
-
-wait03B:
-subi r21,1
-nop
-nop
-nop
-nop
-nop
-breq wait03A
-rjmp wait03B 
-
-wait004:
-ldi r20,0xff
-jmp wait04A
-
-wait04A:
-ldi r21,0xff
-subi r20,1
-brne wait04B
-ret
-
-wait04B:
-subi r21,1
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-nop
-breq wait04A
-rjmp wait04B 
-
-;rutina de espera.
-;cada 0,022 o 0,029 o 0,039 seg va a revisar si algun borde se encendio
-;retrasa el carro 5.6 seg, 7,4 seg, 9,9 seg respectivamente
-esperanto:
-nop
-ldi r19,0xff
-rjmp wait00
-
-wait00:
-nop
-call wait003;retraso de 0.029
-in r4,pinf
-nop
-com r4 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
-SBRC r4,0 ;si el pin 0 NO es 0, salta, si lo es ignora
-rjmp setsecA
-sbrc r4,1 ;si el pin 1 NO es 0, salta, si lo es ignora
-rjmp setsecB
-subi r19,1
-breq resolution
-rjmp wait00
-;fin de rutina de espera
-
-setsecA:
-nop
-ldi r24,0
-ldi r27,0
-jmp deteccion
-
-setsecB:
-nop
-ldi r24,1
-ldi r27,1
-jmp deteccion
-
-;deteccion de en que casilla estoy
-deteccion:
-nop
-
-
-
-;resolucion de conflictos ya que alguien ha decidido que quiere copiarse de nosotros, razon por la cual su bastardo carro debe ser aniquilado sin clemencia.
-resolution:
-nop
-
-
-
-
-
-
-
-;deducir la proxima casilla a moder.
-
 backA:
 jmp moverdown
 in r4,pinf
 nop
-com r4
 SBRS r4,0
 jmp backA
 jmp gostop
@@ -378,7 +382,6 @@ backB:
 jmp moverup
 in r4,pinf
 nop
-com r4
 SBRS r4,1
 jmp backB
 jmp gostop
@@ -482,6 +485,7 @@ breq turnright
 jmp turnleft
 
 deducir:
+call parar
 mov r22,r16
 call getval
 ldi r20,0
@@ -489,46 +493,10 @@ cpse r19,r20
 jmp RutSel
 jmp GOBACK
 
-
-
-
-
-
-
-
-
-
-
-
-
 ;fin rutinas deducir
 
 gostop:
-nop
 jmp gostop
-
-
-
-
-
-
-
-
-
-stindi:
-jmp stindi
-
-pasoizq:
-
-pasoder:
-
-pasoatra:
-
-pasoadel:
-
-
-
-/*deprecated 
 
 ;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
 stindi:
@@ -536,46 +504,49 @@ nop
 call pasoadel
 in r4, pinf
 nop
-com r4
-nop
-cpi r4,0
+mov aux4,r4
+cpi aux4,0
 breq stindi
 ;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
-cpi r4,2
+cpi aux4,2
 breq setsecA
 jmp setsecB
 
-
-
-	;mover hasta encender una casilla dentro del tablero en mi sector
+setsecA:
+ldi r24,0
+jmp deducir
+setsecB:
+ldi r24,1
+jmp deducir
+;mover hasta encender una casilla dentro del tablero en mi sector
 stindiA:
 nop
 call pasoadel
 in r2, pinc
 nop
-com r2
-cpi r2,0
+mov aux1,r2
+cpi aux1,0
 breq stindiA
 ldi r22,0
-SBRC r2,0
+SBRC aux1,0
 jmp stindiAA
 inc r22
-SBRC r2,1
+SBRC aux1,1
 jmp stindiAA
 inc r22
-SBRC r2,2
+SBRC aux1,2
 jmp stindiAA
 inc r22
-SBRC r2,3
+SBRC aux1,3
 jmp stindiAA
 inc r22
-SBRC r2,4
+SBRC aux1,4
 jmp stindiAA
 inc r22
-SBRC r2,5
+SBRC aux1,5
 jmp stindiAA
 inc r22
-SBRC r2,6
+SBRC aux1,6
 jmp stindiAA
 inc r22
 jmp stindiAA
@@ -592,29 +563,29 @@ nop
 call pasoadel
 in r3, pind
 nop
-com r3
-cpi r3,0
+mov aux1,r3
+cpi aux1,0
 breq stindiB
 ldi r22,0
-SBRC r3,0
+SBRC aux1,0
 jmp stindiBB
 inc r22
-SBRC r3,1
+SBRC aux1,1
 jmp stindiBB
 inc r22
-SBRC r3,2
+SBRC aux1,2
 jmp stindiBB
 inc r22
-SBRC r3,3
+SBRC aux1,3
 jmp stindiBB
 inc r22
-SBRC r3,4
+SBRC aux1,4
 jmp stindiBB
 inc r22
-SBRC r3,5
+SBRC aux1,5
 jmp stindiBB
 inc r22
-SBRC r3,6
+SBRC aux1,6
 jmp stindiBB
 inc r22
 jmp stindiBB
@@ -628,5 +599,3 @@ mov r25,r20
 mov r26,r21
 jmp deducir
 ;fin
-
-*/
