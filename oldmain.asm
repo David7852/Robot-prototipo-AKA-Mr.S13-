@@ -361,6 +361,119 @@ SBRC r2,7
 ldi r19,1
 jmp retgeval
 
+;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
+stindiAA:
+cp r22,objn
+breq retgeval
+call getxy
+mov r25,r20
+mov r26,r21
+pop r0
+jmp deducir
+
+stindiBB:
+ldi r20,8
+add r22,r20
+cp r22,objn
+breq retgeval
+call getxy
+mov r25,r20
+mov r26,r21
+pop r0
+jmp deducir
+;mover hasta encender una casilla dentro del tablero en mi sector
+
+stindiA:
+call pasoadel
+in r2, pinc
+nop
+mov r25,r2
+cpi r25,0
+breq stindiA
+ldi r22,0
+SBRC r25,0
+call stindiAA
+inc r22
+SBRC r25,1
+call stindiAA
+inc r22
+SBRC r25,2
+call stindiAA
+inc r22
+SBRC r25,3
+call stindiAA
+inc r22
+SBRC r25,4
+call stindiAA
+inc r22
+SBRC r25,5
+call stindiAA
+inc r22
+SBRC r25,6
+call stindiAA
+inc r22
+SBRC r25,7
+call stindiAA
+rjmp stindia
+
+stindiB:
+call pasoadel
+in r3, pind
+nop
+mov r30,r3
+cpi r30,0
+breq stindiB
+ldi r22,0
+SBRC r30,0
+call stindibb
+inc r22
+SBRC r30,1
+call stindibb
+inc r22
+SBRC r30,2
+call stindibb
+inc r22
+SBRC r30,3
+call stindibb
+inc r22
+SBRC r30,4
+call stindibb
+inc r22
+SBRC r30,5
+call stindibb
+inc r22
+SBRC r30,6
+call stindibb
+inc r22
+sbrc r30,7
+call stindibb
+rjmp stindib
+;mueve hacia adelante hasta que se encienda un borde
+stindi:
+nop
+call pasoadel
+in r4, pinf
+nop
+mov aux4,r4
+cpi aux4,0
+breq stindi
+;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
+cpi aux4,2
+breq setsecB
+rjmp setsecA
+
+setsecA:
+ldi r24,0
+ldi r27,0
+rjmp stindia
+
+setsecB:
+ldi r24,1
+ldi r27,1
+rjmp stindib
+;fin
+
+
 ;dadas las coordenadas xy guardadas en los registros r20 y r21 respectivamente, guarda el numero de esa casilla en r22
 getNxy:
 ldi r22,4
@@ -497,105 +610,4 @@ jmp GOBACK
 
 gostop:
 jmp gostop
-
-;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
-stindi:
-nop
-call pasoadel
-in r4, pinf
-nop
-mov aux4,r4
-cpi aux4,0
-breq stindi
-;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
-cpi aux4,2
-breq setsecA
-jmp setsecB
-
-setsecA:
-ldi r24,0
-jmp deducir
-setsecB:
-ldi r24,1
-jmp deducir
-;mover hasta encender una casilla dentro del tablero en mi sector
-stindiA:
-nop
-call pasoadel
-in r2, pinc
-nop
-mov aux1,r2
-cpi aux1,0
-breq stindiA
-ldi r22,0
-SBRC aux1,0
-jmp stindiAA
-inc r22
-SBRC aux1,1
-jmp stindiAA
-inc r22
-SBRC aux1,2
-jmp stindiAA
-inc r22
-SBRC aux1,3
-jmp stindiAA
-inc r22
-SBRC aux1,4
-jmp stindiAA
-inc r22
-SBRC aux1,5
-jmp stindiAA
-inc r22
-SBRC aux1,6
-jmp stindiAA
-inc r22
-jmp stindiAA
-
-stindiAA:
-nop
-call getxy
-mov r25,r20
-mov r26,r21
-jmp deducir
-
-stindiB:
-nop
-call pasoadel
-in r3, pind
-nop
-mov aux1,r3
-cpi aux1,0
-breq stindiB
-ldi r22,0
-SBRC aux1,0
-jmp stindiBB
-inc r22
-SBRC aux1,1
-jmp stindiBB
-inc r22
-SBRC aux1,2
-jmp stindiBB
-inc r22
-SBRC aux1,3
-jmp stindiBB
-inc r22
-SBRC aux1,4
-jmp stindiBB
-inc r22
-SBRC aux1,5
-jmp stindiBB
-inc r22
-SBRC aux1,6
-jmp stindiBB
-inc r22
-jmp stindiBB
-
-stindiBB:
-nop
-ldi r20,8
-add r22,r20
-call getxy
-mov r25,r20
-mov r26,r21
-jmp deducir
 ;fin
