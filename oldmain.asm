@@ -473,7 +473,6 @@ ldi r27,1
 rjmp stindib
 ;fin
 
-
 ;dadas las coordenadas xy guardadas en los registros r20 y r21 respectivamente, guarda el numero de esa casilla en r22
 getNxy:
 ldi r22,4
