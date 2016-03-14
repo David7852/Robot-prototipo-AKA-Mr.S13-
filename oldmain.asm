@@ -1,3 +1,4 @@
+/*last update oldmain*/
 ;Rutina de inicializacion de puertos y variables aqui. (FALTA POR AHORA)
 
 ;del 00 al 1f son regs de proposito general
@@ -41,28 +42,31 @@
 .include "usb1286def.inc"
 .org 0000
 
-start:;lee la posicion de objeto
-nop;initial setup port
-ldi r23,41
+;lee la posicion de objeto
+;initial setup port
+ldi r23,40
 ldi r19,0xff
+out portc,r19
+out portd,r19
+out portf,r19
 out ddrb,r19
 ldi r19,0
+out portb,r19
 out ddrd,r19
 out ddrf,r19
 out ddrc,r19
-in r2, pinc
-nop
-in r3, pind
-nop
+start:
 ;end of initial setup
+call getioa
+call getiob
+ldi r19,0
 cp r2,r19
-brne startA
+brne starta
 cpse r3,r19
-jmp startB
+jmp startb
 rjmp start
 
 startA:;setea la posicion del objeto si esta en sector A
-nop
 SBRC r2,0
 jmp setstartA
 inc r19
@@ -86,7 +90,36 @@ jmp setstartA
 inc r19
 jmp setstartA
 
+;rutinas para delay de lecturas
+getioa:
+in ioa,pinc
+nop
+call wait20
+in r7,pinc
+nop
+cpse ioa,r7
+rjmp getioa
+ret
 
+getiob:
+in iob,pind
+nop
+call wait20
+in r7,pind
+nop
+cpse iob,r7
+rjmp getiob
+ret
+
+getbordes:
+in bordes,pinf
+nop
+call wait20
+in r7,pinf
+nop
+cpse bordes,r7
+rjmp getbordes
+ret
 ;Rutinas para generar retardos a (20 mhz)
 ;20ms (7*0.0000005)(256)(26)=0.022seg
 waitto:
@@ -94,6 +127,19 @@ inc r19
 cpse r19,r23
 rjmp waitto
 ret
+
+wait10:
+ldi r20,26
+jmp wait10A
+wait10A:
+ldi r21,0xff
+subi r20,1
+brne wait10B
+ret
+wait10B:
+subi r21,1
+breq wait10A
+rjmp wait10B 
 
 wait20:
 ldi r20,26
@@ -193,11 +239,10 @@ parar:
 ldi aux1,0xf0
 and motores,aux1
 out portb,motores
-call wait20;(usar siempre el menor tiempo de espera)
+call wait20
 ret
 
 startB:;setea la posicion del objeto si esta en sector B
-nop
 SBRC r3,0
 jmp setstartB
 inc r19
@@ -222,7 +267,6 @@ inc r19
 jmp setstartB
 
 setstartA:
-nop
 mov r16,r19
 mov r22,r16
 call getxy
@@ -231,7 +275,6 @@ mov r18,r21
 rjmp stindi;rutina de solucion de sector
 
 setstartB:
-nop
 ldi r20,8
 add r19,r20
 mov r16,r19
@@ -276,8 +319,7 @@ brsh getvalB
 jmp getvalA
 
 getvalB:
-in r3,pind
-nop
+call getiob
 ldi r20,8
 SBRC r3,0
 ldi r19,1
@@ -319,8 +361,7 @@ jmp retgeval
 retgeval:
 ret
 getvalA:
-in r2,pinc
-nop
+call getioa
 ldi r20,0
 SBRC r2,0
 ldi r19,1
@@ -369,6 +410,7 @@ call getxy
 mov r25,r20
 mov r26,r21
 pop r0
+pop r0
 jmp deducir
 
 stindiBB:
@@ -380,13 +422,13 @@ call getxy
 mov r25,r20
 mov r26,r21
 pop r0
+pop r0
 jmp deducir
 ;mover hasta encender una casilla dentro del tablero en mi sector
 
 stindiA:
 call pasoadel
-in r2, pinc
-nop
+call getioa
 mov r25,r2
 cpi r25,0
 breq stindiA
@@ -418,8 +460,7 @@ rjmp stindia
 
 stindiB:
 call pasoadel
-in r3, pind
-nop
+call getiob
 mov r30,r3
 cpi r30,0
 breq stindiB
@@ -450,10 +491,8 @@ call stindibb
 rjmp stindib
 ;mueve hacia adelante hasta que se encienda un borde
 stindi:
-nop
 call pasoadel
-in r4, pinf
-nop
+call getbordes
 mov aux4,r4
 cpi aux4,0
 breq stindi
@@ -473,6 +512,7 @@ ldi r27,1
 rjmp stindib
 ;fin
 
+
 ;dadas las coordenadas xy guardadas en los registros r20 y r21 respectivamente, guarda el numero de esa casilla en r22
 getNxy:
 ldi r22,4
@@ -484,19 +524,24 @@ ret
 
 backA:
 jmp moverdown
-in r4,pinf
-nop
+call getbordes
 SBRS r4,0
 jmp backA
 jmp gostop
 
 backB:
 jmp moverup
-in r4,pinf
-nop
+call getbordes
 SBRS r4,1
 jmp backB
 jmp gostop
+
+moverright:
+breq retre
+rjmp moveright
+
+retre:
+ret
 
 turnleft:
 call pasoder
@@ -513,7 +558,12 @@ ldi r27,2
 breq turnleft
 jmp turnright
 
-moverright:
+GOBACK:
+cpi r24,1
+breq backB
+jmp backA
+
+moveright:
 inc r25
 cpi r27,2
 breq fordward
@@ -524,26 +574,17 @@ ldi r27,2
 breq turnright
 jmp turnleft
 
-GOBACK:
-cpi r24,1
-breq backB
-jmp backA
-
 RutSel:
 cp r18,r26
 brlo moverdown
 brne moverup
 cp r17,r25
 brlo moverleft
-brne moverright
+call moverright
 mov r22,r16
 call getval
 cpi r19,0
 breq GOBACK
-jmp fordward
-
-turnright:
-call pasoizq
 jmp fordward
 
 moverdown:
@@ -585,6 +626,10 @@ cpi r19,1
 breq deducir
 jmp fordward
 
+turnright:
+call pasoizq
+jmp fordward
+
 moverup:
 inc r26
 cpi r27,0
@@ -604,7 +649,6 @@ ldi r20,0
 cpse r19,r20
 jmp RutSel
 jmp GOBACK
-
 ;fin rutinas deducir
 
 gostop:
