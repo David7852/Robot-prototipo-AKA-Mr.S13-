@@ -537,17 +537,17 @@ ret
 ;fin
 
 backA:
-jmp moverdown
 call getbordes
 SBRS r4,0
 jmp backA
+jmp moverdown
 jmp gostop
 
 backB:
-jmp moverup
 call getbordes
 SBRS r4,1
 jmp backB
+jmp moverup
 jmp gostop
 
 moverright:
