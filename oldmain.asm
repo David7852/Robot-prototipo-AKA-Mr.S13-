@@ -123,6 +123,7 @@ ret
 ;Rutinas para generar retardos a (20 mhz)
 ;20ms (7*0.0000005)(256)(26)=0.022seg
 waitto:
+call wait20
 inc r19
 cpse r19,r23
 rjmp waitto
@@ -203,6 +204,7 @@ and motores,aux1
 ldi aux1,0x01
 eor motores,aux1
 out portb,motores
+ldi r19,0
 call waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 ret
 
@@ -222,7 +224,6 @@ and motores,aux1
 ldi aux1,0x0a
 eor motores,aux1
 out portb,motores
-ldi r19,0
 call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 ret
 
@@ -239,7 +240,7 @@ parar:
 ldi aux1,0xf0
 and motores,aux1
 out portb,motores
-call wait20
+call wait30
 ret
 
 startB:;setea la posicion del objeto si esta en sector B
@@ -429,9 +430,10 @@ jmp deducir
 
 stindiBB:
 ldi r20,8
-add r22,r20
-cp r22,objn
+add r20,r22
+cp r20,objn
 breq retgeval
+mov r22,r20
 call getxy
 mov r25,r20
 mov r26,r21
@@ -503,17 +505,19 @@ inc r22
 sbrc r30,7
 call stindibb
 rjmp stindib
+
 ;mueve hacia adelante hasta que se encienda un borde
 stindi:
 call pasoadel
 call getbordes
 mov aux4,r4
+andi aux4,0x03
 cpi aux4,0
 breq stindi
 ;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
 cpi aux4,2
 breq setsecB
-rjmp setsecA
+rjmp setseca
 
 setsecA:
 ldi r24,0
@@ -526,7 +530,6 @@ ldi r27,1
 rjmp stindib
 ;fin
 
-
 ;dadas las coordenadas xy guardadas en los registros r20 y r21 respectivamente, guarda el numero de esa casilla en r22
 getNxy:
 ldi r22,4
@@ -535,20 +538,6 @@ mov r22,r0
 add r22,r20
 ret
 ;fin
-
-backA:
-call getbordes
-SBRS r4,0
-jmp backA
-jmp moverdown
-jmp gostop
-
-backB:
-call getbordes
-SBRS r4,1
-jmp backB
-jmp moverup
-jmp gostop
 
 moverright:
 breq retre
@@ -568,14 +557,15 @@ breq reverse
 cpi r27,3
 breq fordward
 cpi r27,0
-ldi r27,2
+ldi r27,3
 breq turnleft
 jmp turnright
 
 GOBACK:
-cpi r24,1
-breq backB
+ldi r31,1
+cpse r24,r31
 jmp backA
+jmp backB
 
 moveright:
 inc r25
@@ -614,16 +604,6 @@ jmp turnright
 
 reverse:
 call pasoatra
-mov r22,r16
-call getval
-cpi r19,0
-breq GOBACK
-mov r20,r25
-mov r21,r26
-call getNxy
-call getval
-cpi r19,1
-breq deducir
 jmp reverse
 
 fordward:
@@ -666,5 +646,44 @@ jmp GOBACK
 ;fin rutinas deducir
 
 gostop:
+call parar
 jmp gostop
+
+backA:
+call getbordes
+mov r31,r4
+sbrc r31,0
+jmp gostop
+sbrs r27,1
+call pasoatra
+sbrs r27,1
+rjmp backa
+ldi r30,2
+ldi r29,3
+cpse r27,r30
+call pasoizq
+cpse r27,r29
+call pasoder
+ldi r27,0
+rjmp backa
+
+
+backB:
+call getbordes
+mov r31,r4
+sbrc r31,1
+jmp gostop
+sbrs r27,1
+call pasoatra
+sbrs r27,1
+rjmp backb
+ldi r30,2
+ldi r29,3
+cpse r27,r30
+call pasoder
+cpse r27,r29
+call pasoizq
+ldi r27,1
+rjmp backb
+
 ;fin
