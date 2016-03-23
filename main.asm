@@ -678,7 +678,7 @@ call atras
 call getbordes
 mov aux3,bordes
 mov aux1,sector
-andi aux1,0x0f
+andi aux1,0x03
 ldi aux2,0
 cpse aux1,aux2;si estoy en sector b
 SBRC aux3,1
