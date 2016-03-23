@@ -31,7 +31,6 @@
 ;N13 = numero de la secuencia (solo para competencia)
 ;*** 
 .dseg
-#define CPU_2MHz        0x03
 .def ioa=r2
 .def iob=r3
 .def bordes=r4
@@ -55,15 +54,16 @@
 .def cub=r30
 .def gir=r31
 
-.equ step=0x00;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un avance igual a 11.45cm (maxima inclinacion, a 45 grados es la medida del sector*1.437)
-.equ giro=0x00;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un desvio igual a 5 grados.
-;distancias
-;secuencia
-;otros
+.equ step=25;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un avance igual a 11.45cm (maxima inclinacion, a 45 grados es la medida del sector*1.437)
+.equ giro=4;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un desvio igual a 10 grados.
 
 .cseg 
+.include "usb1286def.inc"
 .org 0000
-ldi r19,0xff;initial setup port
+ldi r19,0xff
+out portc,r19
+out portd,r19
+out portf,r19
 out ddrb,r19
 ldi r19,0
 out portb,r19
@@ -160,7 +160,8 @@ rjmp cuentback
 ;el estado anterior del puerto a buscar debe estar guardado en aux4, el resultado sera escrito en aux1
 ;si no hay cambios, aux1 seria igual a 0xff
 getchanga:
-in aux2,pinc;lee el estado al momento
+call getioa
+mov aux2,ioa
 eor aux2,aux4
 ldi aux1,0
 rjmp getchang
@@ -193,7 +194,8 @@ ldi aux1,0xff
 ret
 
 getchangb:
-in aux2,pind;lee el estado al momento
+call getiob
+mov aux2,iob
 eor aux2,aux4
 ldi aux1,0
 rjmp getchang
@@ -224,95 +226,108 @@ jmp subgetxy
 ;obtener el valor actual de una casilla N
 ;(la casilla a buscar debe estar guardada en r22, el valor (0,1) es devuelto en el registro 3)
 getval:
-ldi r19,0
 cpi r22,8
 brsh getvalB
 jmp getvalA
+
 getvalB:
-in r3,pind
-nop
+call getiob
 ldi r20,8
+ldi r19,0
 SBRC r3,0
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r3,1
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r3,2
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r3,3
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r3,4
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r3,5
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r3,6
 ldi r19,1
 cp r22,r20
 breq retgeval
+ldi r19,0
 SBRC r3,7
 ldi r19,1
-ret
+jmp retgeval
 retgeval:
 ret
 getvalA:
-in r2,pinc
-nop
+call getioa
 ldi r20,0
+ldi r19,0
 SBRC r2,0
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r2,1
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r2,2
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r2,3
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r2,4
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r2,5
 ldi r19,1
 cp r22,r20
 breq retgeval
 inc r20
+ldi r19,0
 SBRC r2,6
 ldi r19,1
 cp r22,r20
 breq retgeval
-inc r20
+ldi r19,0
 SBRC r2,7
 ldi r19,1
-ret
+jmp retgeval
 
 ;dadas las coordenadas xy guardadas en los registros r20 y r21 respectivamente, guarda el numero de esa casilla en r22
 getNxy:
@@ -447,10 +462,8 @@ call check
 ;****
 
 seto:;(iniciar puertos y )
-in r2, pinc
-nop
-in r3, pind
-nop
+call getioa
+call getiob
 cp r2,r19
 brne startA
 cpse r3,r19
@@ -526,16 +539,15 @@ rjmp waitto
 waitto:
 call wait30;cambiar aca cual se quiere si 20,30 o 40
 dec r19
-in r4,pinf
-nop
+call getborfas
 ;com r4 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
-SBRC r4,0 ;si el pin 0 NO es 0, salta, si lo es ignora
-rjmp setsecA
-sbrc r4,1 ;si el pin 1 NO es 0, salta, si lo es ignora
-rjmp setsecB
+SBRC r4,0 ;si el pin 0 NO es 0, salta, si lo es continua
+rjmp setsecb
+sbrc r4,1 ;si el pin 1 NO es 0, salta, si lo es continua
+rjmp setseca
 cpi r19,0
-breq waitto
-rjmp resolution
+breq resolution
+rjmp waitto
 setsecA:
 ldi r24,0
 ret
@@ -550,22 +562,21 @@ ret ;(en caso de estar solos en la pista, simplemente sale y comienza a explorar
 
 sunless:
 call adelante
-in bordes,pinf
-nop
+call getbordes
+ldi aux1,0x03
+and bordes,aux1
 ldi aux1,0
 cp bordes,aux1
 breq sunless
 ldi aux1,1
 cp bordes, aux1
 breq setsecA
-ldi aux1,2
-cp bordes, aux1
-breq setsecB 
+rjmp setsecB 
 ret
 
 flare:
-in ioa,pina
-in iob,pinb
+call getioa
+call getiob
 ldi aux1,0xff
 cpse sector,aux1
 rjmp launch
@@ -591,7 +602,7 @@ breq exting
 ;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0.
 ;					 si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0.
 ; si el registro no es 0, ir a extingub. 
-in bordes,pinf
+call getbordes
 rjmp extinbo
 ;determinar si fueron los bordes o los sensores (que deberian conservar el valor que envio a extingue)
 extinbo:
@@ -663,7 +674,7 @@ rjmp setizq
 
 extingue:
 call atras
-in bordes,pinf
+call getbordes
 mov aux3,bordes
 mov aux1,sector
 andi aux1,0x0f
@@ -753,29 +764,36 @@ rjmp girder
 dec aux1
 rjmp izquiergir
 
-/*
-fillrocks:
-ldi aux3,0
-mov aux1,sector
-andi aux1,0x0f
-ldi aux2,0
-cpse aux1,aux2;si estoy en sector b
-rjmp fillroca
-ldi aux2,1
-cpse aux1,aux2;si estoy en sector a
-rjmp fillrocb
+;rutinas para delay de lecturas
+getborfas:
+in bordes,pinf
+nop
+in r7,pinf
+cpse bordes,r7
+rjmp getbordes
+ret
 
-fillroca:
-cp aux3,objy
-brge setrock
-inc aux3
-cpi aux3,16
-brne fillroca
+getioa:
+in ioa,pinc
+call wait20
+in r7,pinc
+cpse ioa,r7
+rjmp getioa
+ret
 
-setrock
+getiob:
+in iob,pind
+call wait20
+in r7,pind
+cpse iob,r7
+rjmp getiob
+ret
 
-fillrocb:
-
-fillfalls:*/
-
+getbordes:
+in bordes,pinf
+call wait20
+in r7,pinf
+cpse bordes,r7
+rjmp getbordes
+ret
 

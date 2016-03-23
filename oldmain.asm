@@ -1,9 +1,4 @@
 /*last update oldmain*/
-;Rutina de inicializacion de puertos y variables aqui. (FALTA POR AHORA)
-
-;del 00 al 1f son regs de proposito general
-;del 20 al 5f (00 a 3f) estan los registros validos para I/O, sumando otros 32 regs
-;.dseg
 ;r16 = objeto (# casilla)
 ;r17 = X objeto
 ;r18= Y objeto
@@ -667,7 +662,6 @@ call pasoder
 ldi r27,0
 rjmp backa
 
-
 backB:
 call getbordes
 mov r31,r4
@@ -685,5 +679,4 @@ cpse r27,r29
 call pasoizq
 ldi r27,1
 rjmp backb
-
 ;fin
