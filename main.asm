@@ -48,8 +48,8 @@
 .def sector=r24
 .def aux5=r25
 .def aux6=r26
-.def aux8=r27
-.def aux9=r28
+.def aux7=r27
+.def aux8=r28
 .def cua=r29
 .def cub=r30
 .def gir=r31
@@ -462,6 +462,7 @@ call cuerdaout
 ldi aux5,0
 call retrieve
 call check
+rjmp fase3
 ;****
 
 seto:;(iniciar puertos y )
@@ -729,42 +730,40 @@ stopit:
 call parar
 rjmp stopit
 
-planit:;calcula cuanto girar, si 5,10,15,etc.
-ldi aux1,1
+planit:;calcula cuanto girar, si 5,10,15,etc, guardando el numero de veces que girar 5 grados en el aux7.
+ldi aux7,1
 ret
 
 derechagir:
-ldi aux2,0
-cpse aux1,aux2
+ldi aux8,0
+cpse aux7,aux8
 rjmp girder
 ret
 
 girder:
-inc aux2
+inc aux8
 ldi aux3,giro
-inc aux3
-cpse aux2,aux3
+cpse aux8,aux3
 call derecha
-cpse aux2,aux3
+cpse aux8,aux3
 rjmp girder
-dec aux1
+dec aux7
 rjmp derechagir
 
 izquiergir:
-ldi aux2,0
-cpse aux1,aux2
+ldi aux8,0
+cpse aux7,aux8
 rjmp girizq
 ret
 
 girizq:
-inc aux2
+inc aux8
 ldi aux3,giro
-inc aux3
-cpse aux2,aux3
+cpse aux8,aux3
 call izquierda
-cpse aux2,aux3
-rjmp girder
-dec aux1
+cpse aux8,aux3
+rjmp girizq
+dec aux7
 rjmp izquiergir
 
 ;rutinas para delay de lecturas
