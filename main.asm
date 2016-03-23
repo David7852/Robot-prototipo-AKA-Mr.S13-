@@ -141,17 +141,15 @@ inc aux5
 rjmp cuentback
 
 cuentpaso:
-ldi aux1,step
-cp aux6,aux1
+cpi aux6,step
 breq cuerdaout
 call adelante
 inc aux6
 rjmp cuentpaso
 
 cuentback:
-ldi aux1,step
-cp aux6,aux1
-breq cuerdaout
+cpi aux6,step
+breq retrieve
 call atras
 inc aux6
 rjmp cuentback
@@ -728,7 +726,7 @@ call izquiergir
 ret
 
 stopit:
-nop
+call parar
 rjmp stopit
 
 planit:;calcula cuanto girar, si 5,10,15,etc.
