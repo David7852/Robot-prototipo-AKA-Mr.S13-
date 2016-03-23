@@ -199,7 +199,9 @@ mov aux2,iob
 eor aux2,aux4
 ldi aux1,0
 call getchang
+ldi aux2,0xff
 ldi aux5,8
+cpse aux1,aux2
 add aux1,aux5
 ret
 
@@ -606,9 +608,7 @@ rjmp exting
 ;					 si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0.
 ; si el registro no es 0, ir a extingub. 
 call getbordes
-rjmp extinbo
 ;determinar si fueron los bordes o los sensores (que deberian conservar el valor que envio a extingue)
-extinbo:
 mov aux3,bordes
 ldi aux2,0;si estoy en a
 cp sector,aux2
@@ -679,16 +679,20 @@ call getbordes
 mov aux3,bordes
 mov aux1,sector
 andi aux1,0x03
-ldi aux2,0
-cpse aux1,aux2;si estoy en sector b
-SBRC aux3,1
-ret
-ldi aux2,1
-cpse aux1,aux2;si estoy en sector a
-SBRC aux3,0
+sbrc aux1,0
+rjmp extb
+sbrs aux1,0
+rjmp exta
+rjmp extingue
+
+extb:
+sbrc aux3,1
 ret
 rjmp extingue
-;cuando eso ocurra detenerme y retornar EXTINGUE CONTIENE EL RET A FASE 2
+exta:
+sbrc aux3,0
+ret
+rjmp extingue
 
 calcuerda:;si a cuerda=objy*2-1 
 mov aux1,sector
