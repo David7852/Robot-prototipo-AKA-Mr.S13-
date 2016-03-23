@@ -537,7 +537,7 @@ esperanto:
 ldi r19,0xff
 rjmp waitto
 waitto:
-call wait30;cambiar aca cual se quiere si 20,30 o 40
+call wait20;cambiar aca cual se quiere si 20,30 o 40
 dec r19
 call getborfas
 ;com r4 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
@@ -598,7 +598,7 @@ cpse sector,aux2
 call getchangb
 ldi aux2,0xff
 cpse aux1,aux2
-breq exting
+rjmp exting
 ;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0.
 ;					 si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0.
 ; si el registro no es 0, ir a extingub. 
@@ -610,9 +610,7 @@ mov aux3,bordes
 ldi aux2,0;si estoy en a
 cp sector,aux2
 breq bordea
-ldi aux2,1
-cp sector,aux2;si estoy en b
-breq bordeb
+rjmp bordeb
 
 bordea:
 SBRC aux3,3
