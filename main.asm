@@ -198,7 +198,10 @@ call getiob
 mov aux2,iob
 eor aux2,aux4
 ldi aux1,0
-rjmp getchang
+call getchang
+ldi aux5,8
+add aux1,aux5
+ret
 
 ;obtener las coordenadas xy de una casilla
 ;(el valor de la casilla a buscar debe estar guardado en r22, el X y Y resultado se guardara en r20 y r21.)
