@@ -23,7 +23,6 @@
 .def iob=r3
 .def bordes=r4
 .def motores=r5
-.def angle=r6
 
 .def objn=r16
 .def objx=r17
@@ -50,8 +49,7 @@ out portb,r19
 out ddrd,r19
 out ddrf,r19
 out ddrc,r19
-start:
-;end of initial setup
+start:;end of initial setup
 call getioa
 call getiob
 ldi r19,0
