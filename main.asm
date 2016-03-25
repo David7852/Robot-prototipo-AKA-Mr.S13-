@@ -77,6 +77,8 @@ jmp fase1
 ;**********
 ;determinar si un sector es rock. (si sector==a && objy<sensor.y) Es roca y devuelve un 0xff en aux1, sino, 00. N de sensor a buscar en aux4
 isrocky:
+mov r1,aux2
+mov r13,aux3
 mov aux1,sector
 andi aux1,0x0f
 ldi aux2,0
@@ -87,6 +89,8 @@ cpse aux1,aux2;si estoy en sector a
 rjmp isroco
 
 isfall:
+mov r1,aux2
+mov r13,aux3
 ldi aux2,0
 cpse gir,aux2;si estoy a derecha
 rjmp isfalla
@@ -107,10 +111,14 @@ BRGE notis
 rjmp setis
 
 setis:
+mov aux2,r1
+mov aux3,r13
 ldi aux1,0xff
 ret
 
 notis:
+mov aux2,r1
+mov aux3,r13
 ldi aux1,0
 ret
 
@@ -127,43 +135,18 @@ cp aux2,objx
 BRGE setis
 rjmp notis
 
-cuerdaout:
-ldi aux6,0
-cp aux5,cuerda
-breq setis
-inc aux5
-rjmp cuentpaso
-
-retrieve:
-ldi aux6,0
-cp aux5,cuerda
-breq setis
-inc aux5
-rjmp cuentback
-
-cuentpaso:
-cpi aux6,step
-breq cuerdaout
-call adelante
-inc aux6
-rjmp cuentpaso
-
-cuentback:
-cpi aux6,step
-breq retrieve
-call atras
-inc aux6
-rjmp cuentback
-
 ;detectar cambios en los sectores especificados
 ;el estado anterior del puerto a buscar debe estar guardado en aux4, el resultado sera escrito en aux1
 ;si no hay cambios, aux1 seria igual a 0xff
 getchanga:
+mov r0,r20
 call getioa
 mov aux2,ioa
 eor aux2,aux4
 ldi aux1,0
-rjmp getchang
+call getchang
+mov r20,r0
+ret
 
 getchang:
 SBRC aux2,0
@@ -193,20 +176,25 @@ ldi aux1,0xff
 ret
 
 getchangb:
+mov r0,r20
+mov r1,r21
 call getiob
 mov aux2,iob
 eor aux2,aux4
 ldi aux1,0
 call getchang
 ldi aux2,0xff
-ldi aux5,8
+ldi aux3,8
 cpse aux1,aux2
-add aux1,aux5
+add aux1,aux3
+mov r20,r0
+mov r21,r1
 ret
 
 ;obtener las coordenadas xy de una casilla
 ;(el valor de la casilla a buscar debe estar guardado en r22, el X y Y resultado se guardara en r20 y r21.)
 getxy:
+mov r1,r19
 ldi r19,0
 ldi r20,0
 ldi r21,0
@@ -215,6 +203,7 @@ rjmp subgetxy
 subgetxy:
 cpse r19,r22
 rjmp loopxy
+mov aux1,r1
 ret
 
 loopxy:
@@ -231,8 +220,9 @@ inc r19
 rjmp subgetxy
 
 ;obtener el valor actual de una casilla N
-;(la casilla a buscar debe estar guardada en r22, el valor (0,1) es devuelto en el registro 3)
+;(la casilla a buscar debe estar guardada en r22, el valor (0,1) es devuelto en aux1)
 getval:
+mov r0,r20
 cpi r22,8
 brsh getvalB
 rjmp getvalA
@@ -286,6 +276,7 @@ SBRC r3,7
 ldi r19,1
 
 retgeval:
+mov r20,r0
 ret
 
 getvalA:
@@ -346,8 +337,30 @@ add r22,r20
 ret
 
 ;Rutinas para generar retardos a (20 mhz)
+;10ms (7*0.0000005)(256)(26)=0.013seg
+wait10:
+mov r0,r20
+mov r1,r21
+ldi r20,26
+rjmp wait10A
+
+wait10A:
+ldi r21,0xff
+subi r20,1
+brne wait10B
+mov r20,r0
+mov r21,r1
+ret
+
+wait10B:
+subi r21,1
+breq wait10A
+rjmp wait10B
+
 ;20ms (7*0.0000005)(256)(26)=0.022seg
 wait20:
+mov r0,r20
+mov r1,r21
 ldi r20,26
 rjmp wait20A
 
@@ -355,6 +368,8 @@ wait20A:
 ldi r21,0xff
 subi r20,1
 brne wait20B
+mov r20,r0
+mov r21,r1
 ret
 
 wait20B:
@@ -367,6 +382,8 @@ rjmp wait20B
  
 ;30 (9*0.0000005)(256)(26)=0.029seg
 wait30:
+mov r0,r20
+mov r1,r21
 ldi r20,26
 rjmp wait30A
 
@@ -374,6 +391,8 @@ wait30A:
 ldi r21,0xff
 subi r20,1
 brne wait30B
+mov r20,r0
+mov r21,r1
 ret
 
 wait30B:
@@ -388,6 +407,8 @@ rjmp wait30B
 
 ;40 (12(0.0000005))(256)(26)=0.039seg
 wait40:
+mov r0,r20
+mov r1,r21
 ldi r20,26
 rjmp wait40A
 
@@ -395,6 +416,8 @@ wait40A:
 ldi r21,0xff
 subi r20,1
 brne wait40B
+mov r20,r0
+mov r21,r1
 ret
 
 wait40B:
@@ -412,46 +435,56 @@ rjmp wait40B
 
 ;rutinas de movimiento
 izquierda:
+mov r0,aux1
 ldi aux1,0xf0
 and motores,aux1
 ldi aux1,0x01
 eor motores,aux1
 out portb,motores
 call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov aux1,r0
 ret
 
 derecha:
+mov r0,aux1
 ldi aux1,0xf0
 and motores,aux1
 ldi aux1,0x04
 eor motores,aux1
 out portb,motores
 call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov aux1,r0
 ret
 
 atras:
+mov r0,aux1
 ldi aux1,0xf0
 and motores,aux1
 ldi aux1,0x0a
 eor motores,aux1
 out portb,motores
 call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov aux1,r0
 ret
 
 adelante:
+mov r0,aux1
 ldi aux1,0xf0
 and motores,aux1
 ldi aux1, 0x05
 eor motores,aux1
 out portb,motores
 call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov aux1,r0
 ret
 
 parar:
+mov r0,aux1
 ldi aux1,0xf0
 and motores,aux1
 out portb,motores
 call wait20;(usar siempre el menor tiempo de espera)
+mov aux1,r0
 ret
 ;*********
 ;fin
@@ -737,6 +770,38 @@ cpse aux1,aux2;si estoy en sector a
 mov cuerda,aux3
 ret
 
+;mover adelante por cuerda
+cuerdaout:
+ldi aux6,0
+cp aux5,cuerda
+breq return
+inc aux5
+rjmp cuentpaso
+
+retrieve:
+ldi aux6,0
+cp aux5,cuerda
+breq return
+inc aux5
+rjmp cuentback
+
+return:
+ret
+
+cuentpaso:
+cpi aux6,step
+breq cuerdaout
+call adelante
+inc aux6
+rjmp cuentpaso
+
+cuentback:
+cpi aux6,step
+breq retrieve
+call atras
+inc aux6
+rjmp cuentback
+
 check:
 mov aux4, objn
 call getval
@@ -795,32 +860,32 @@ rjmp izquiergir
 getborfas:
 in bordes,pinf
 nop
-in r7,pinf
-cpse bordes,r7
+in r1,pinf
+cpse bordes,r1
 rjmp getbordes
 ret
 
 getioa:
 in ioa,pinc
-call wait20
-in r7,pinc
-cpse ioa,r7
+call wait10
+in r1,pinc
+cpse ioa,r1
 rjmp getioa
 ret
 
 getiob:
 in iob,pind
-call wait20
-in r7,pind
-cpse iob,r7
+call wait10
+in r1,pind
+cpse iob,r1
 rjmp getiob
 ret
 
 getbordes:
 in bordes,pinf
-call wait20
-in r7,pinf
-cpse bordes,r7
+call wait10
+in r1,pinf
+cpse bordes,r1
 rjmp getbordes
 ret
 
