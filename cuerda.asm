@@ -507,14 +507,13 @@ ldi aux5,0
 call cuerdaout
 ldi aux5,0
 call retrieve
-call check
-rjmp fase3
+rjmp check
+rjmp stopit
 ;****
 
-seto:;(iniciar puertos y )
+seto:;(esperar a que objeto este puesto)
 call getioa
 call getiob
-ldi r19,0
 cp r2,r19
 brne startA
 cpse r3,r19
@@ -771,12 +770,49 @@ cpse aux1,aux2;si estoy en sector a
 mov cuerda,aux3
 ret
 
+;esto agrega mas de 10 ms al paso de originalmente 22, asi que step deberia dividirse 1.5 de su cantidad original.
 ;mover adelante por cuerda
 cuerdaout:
 ldi aux6,0
 cp aux5,cuerda
 breq return
 inc aux5
+;***
+ldi aux4,0
+ldi aux1,0
+;***
+rjmp cuentpaso
+
+setff:
+ldi cub,0xff
+inc aux6
+rjmp cuentpaso
+
+cuentpaso:
+cpi aux6,step
+breq cuerdaout
+call adelante
+;***
+;aux1 es resultado de getchang
+sbrc sector,0
+call getchangb
+sbrs sector,0
+call getchanga
+;si cua es igual a aux1+4 o aux1-4, cub igual ff
+ldi aux2,4
+add aux1,aux2
+cp cua,aux1
+breq setff
+subi aux1,8
+cp cua,aux1
+breq setff
+;si aux1 es distinto de  ff, guardar en cua aux1
+add aux1,aux2
+ldi aux2,0xff
+cpse aux1,aux2
+mov cua,aux1
+;***
+inc aux6
 rjmp cuentpaso
 
 retrieve:
@@ -786,16 +822,6 @@ breq return
 inc aux5
 rjmp cuentback
 
-return:
-ret
-
-cuentpaso:
-cpi aux6,step
-breq cuerdaout
-call adelante
-inc aux6
-rjmp cuentpaso
-
 cuentback:
 cpi aux6,step
 breq retrieve
@@ -803,7 +829,12 @@ call atras
 inc aux6
 rjmp cuentback
 
+return:
+ret
+
 check:
+cpi cub,0xff
+breq stopit
 mov aux4, objn
 call getval
 cpi aux1,0
@@ -815,7 +846,7 @@ call derechagir
 ldi aux2,0
 cpse gir,aux2
 call izquiergir
-ret
+jmp fase3
 
 stopit:
 call parar
@@ -889,4 +920,3 @@ in r1,pinf
 cpse bordes,r1
 rjmp getbordes
 ret
-
