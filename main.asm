@@ -54,8 +54,8 @@
 .def cub=r30
 .def gir=r31
 
-.equ step=25;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un avance igual a 11.45cm (maxima inclinacion, a 45 grados es la medida del sector*1.437)
-.equ giro=4;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un desvio igual a 10 grados.
+.equ step=20;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un avance igual a 11.45cm (maxima inclinacion, a 45 grados es la medida del sector*1.437)
+.equ giro=7;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas adecuado) para generar un desvio igual a 10 grados.
 
 .cseg 
 .include "usb1286def.inc"
@@ -72,6 +72,7 @@ out ddrf,r19
 out ddrc,r19
 jmp fase1
 ;**********
+
 ;rutinas de asistencia
 ;**********
 ;determinar si un sector es rock. (si sector==a && objy<sensor.y) Es roca y devuelve un 0xff en aux1, sino, 00. N de sensor a buscar en aux4
@@ -210,28 +211,31 @@ ldi r19,0
 ldi r20,0
 ldi r21,0
 rjmp subgetxy
+
 subgetxy:
 cpse r19,r22
-jmp loopxy
+rjmp loopxy
 ret
+
 loopxy:
 cpi r20,3
 breq eqloopxy
 inc r20
 inc r19
-jmp subgetxy 
+rjmp subgetxy 
+
 eqloopxy:
 inc r21
 ldi r20,0
 inc r19
-jmp subgetxy
+rjmp subgetxy
 
 ;obtener el valor actual de una casilla N
 ;(la casilla a buscar debe estar guardada en r22, el valor (0,1) es devuelto en el registro 3)
 getval:
 cpi r22,8
 brsh getvalB
-jmp getvalA
+rjmp getvalA
 
 getvalB:
 call getiob
@@ -280,9 +284,10 @@ breq retgeval
 ldi r19,0
 SBRC r3,7
 ldi r19,1
-jmp retgeval
+
 retgeval:
 ret
+
 getvalA:
 call getioa
 ldi r20,0
@@ -330,7 +335,7 @@ breq retgeval
 ldi r19,0
 SBRC r2,7
 ldi r19,1
-jmp retgeval
+rjmp retgeval
 
 ;dadas las coordenadas xy guardadas en los registros r20 y r21 respectivamente, guarda el numero de esa casilla en r22
 getNxy:
@@ -344,28 +349,33 @@ ret
 ;20ms (7*0.0000005)(256)(26)=0.022seg
 wait20:
 ldi r20,26
-jmp wait20A
+rjmp wait20A
+
 wait20A:
 ldi r21,0xff
 subi r20,1
 brne wait20B
 ret
+
 wait20B:
 subi r21,1
 nop
 nop
 nop
 breq wait20A
-rjmp wait20B 
+rjmp wait20B
+ 
 ;30 (9*0.0000005)(256)(26)=0.029seg
 wait30:
 ldi r20,26
-jmp wait30A
+rjmp wait30A
+
 wait30A:
 ldi r21,0xff
 subi r20,1
 brne wait30B
 ret
+
 wait30B:
 subi r21,1
 nop
@@ -375,15 +385,18 @@ nop
 nop
 breq wait30A
 rjmp wait30B 
+
 ;40 (12(0.0000005))(256)(26)=0.039seg
 wait40:
 ldi r20,26
-jmp wait40A
+rjmp wait40A
+
 wait40A:
 ldi r21,0xff
 subi r20,1
 brne wait40B
 ret
+
 wait40B:
 subi r21,1
 nop
@@ -471,54 +484,57 @@ call getiob
 cp r2,r19
 brne startA
 cpse r3,r19
-jmp startB
-jmp seto
+rjmp startB
+rjmp seto
+
 startA:;setea la posicion del objeto (si esta en sector A)
 SBRC r2,0
-jmp setstartA
+rjmp setstartA
 inc r19
 SBRC r2,1
-jmp setstartA
+rjmp setstartA
 inc r19
 SBRC r2,2
-jmp setstartA
+rjmp setstartA
 inc r19
 SBRC r2,3
-jmp setstartA
+rjmp setstartA
 inc r19
 SBRC r2,4
-jmp setstartA
+rjmp setstartA
 inc r19
 SBRC r2,5
-jmp setstartA
+rjmp setstartA
 inc r19
 SBRC r2,6
-jmp setstartA
+rjmp setstartA
 inc r19
-jmp setstartA
+rjmp setstartA
+
 startB:;setea la posicion del objeto (si esta en sector B)
 SBRC r3,0
-jmp setstartB
+rjmp setstartB
 inc r19
 SBRC r3,1
-jmp setstartB
+rjmp setstartB
 inc r19
 SBRC r3,2
-jmp setstartB
+rjmp setstartB
 inc r19
 SBRC r3,3
-jmp setstartB
+rjmp setstartB
 inc r19
 SBRC r3,4
-jmp setstartB
+rjmp setstartB
 inc r19
 SBRC r3,5
-jmp setstartB
+rjmp setstartB
 inc r19
 SBRC r3,6
-jmp setstartB
+rjmp setstartB
 inc r19
-jmp setstartB
+rjmp setstartB
+
 setstartA:
 mov r16,r19
 mov r22,r16
@@ -526,6 +542,7 @@ call getxy
 mov r17,r20
 mov r18,r21
 ret
+
 setstartB:
 ldi r20,8
 add r19,r20
@@ -535,11 +552,13 @@ call getxy
 mov r17,r20
 mov r18,r21
 ret
+
 ;rutina de espera.(retrasa el carro 5.6 seg, 7,4 seg, 9,9 seg respectivamente)
 ;cada 22 o 29 o 39 milisegundos se va a revisar si algun borde se encendio
 esperanto:
 ldi r19,0xff
 rjmp waitto
+
 waitto:
 call wait20;cambiar aca cual se quiere si 20,30 o 40
 dec r19
@@ -552,12 +571,15 @@ rjmp setseca
 cpi r19,0
 breq resolution
 rjmp waitto
+
 setsecA:
 ldi r24,0
 ret
+
 setsecB:
 ldi r24,1
 ret
+
 ;fin de rutina de espera
 resolution:;(en caso de que algun otro carro TAMBIEN (malditos) este esperando o nosotros estemos solos)
 ldi sector,0xff
@@ -628,6 +650,7 @@ rjmp setizq
 SBRC aux3,2
 rjmp extingue
 rjmp launch
+
 bordeb:
 SBRC aux3,3
 ori sector,0x80;mirando derecha
@@ -646,6 +669,7 @@ rjmp launch
 setder:
 ldi gir,0
 rjmp extingue
+
 setizq:
 ldi gir,1
 rjmp extingue
@@ -688,6 +712,7 @@ extb:
 sbrc aux3,1
 ret
 rjmp extingue
+
 exta:
 sbrc aux3,0
 ret
