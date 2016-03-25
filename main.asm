@@ -507,8 +507,8 @@ ldi aux5,0
 call cuerdaout
 ldi aux5,0
 call retrieve
-call check
-rjmp fase3
+rjmp check
+rjmp stopit
 ;****
 
 seto:;(esperar a que objeto este puesto)
@@ -814,7 +814,7 @@ call derechagir
 ldi aux2,0
 cpse gir,aux2
 call izquiergir
-ret
+jmp fase3
 
 stopit:
 call parar
@@ -986,32 +986,18 @@ ret
 ;r28-19 = aux
 
 subindi: ;esta rutina es la conexion entre cuerda y cuenta paso.
-;bla bla bla
-rjmp stindi
-
-;mueve hacia adelante hasta que se encienda un borde
-stindi:
-call adelante
-call getbordes
-mov aux4,r4
-andi aux4,0x03
-cpi aux4,0
-breq stindi
-;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
-cpi aux4,2
+andi sector,0x03
+cpi sector,1
 breq ssetsecB
 rjmp ssetseca
 
 ssetsecA:
-ldi r24,0
 ldi r27,0
 rjmp stindia
 
 ssetsecB:
-ldi r24,1
 ldi r27,1
 rjmp stindib
-;fin
 
 ;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
 stindiAA:
@@ -1211,15 +1197,11 @@ jmp RutSel
 jmp GOBACK
 ;fin rutinas deducir
 
-gostop:
-call parar
-jmp gostop
-
 backA:
 call getbordes
 mov r31,r4
 sbrc r31,0
-jmp gostop
+jmp stopit
 sbrs r27,1
 call atras
 sbrs r27,1
@@ -1237,7 +1219,7 @@ backB:
 call getbordes
 mov r31,r4
 sbrc r31,1
-jmp gostop
+jmp stopit
 sbrs r27,1
 call atras
 sbrs r27,1
