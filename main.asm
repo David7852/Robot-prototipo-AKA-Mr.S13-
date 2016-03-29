@@ -339,8 +339,8 @@ ret
 ;Rutinas para generar retardos a (20 mhz)
 ;10ms (7*0.0000005)(256)(26)=0.013seg
 wait10:
-mov r0,r20
-mov r1,r21
+mov r8,r20
+mov r11,r21
 ldi r20,26
 rjmp wait10A
 
@@ -348,8 +348,8 @@ wait10A:
 ldi r21,0xff
 subi r20,1
 brne wait10B
-mov r20,r0
-mov r21,r1
+mov r20,r8
+mov r21,r11
 ret
 
 wait10B:
@@ -359,8 +359,8 @@ rjmp wait10B
 
 ;20ms (7*0.0000005)(256)(26)=0.022seg
 wait20:
-mov r0,r20
-mov r1,r21
+mov r8,r20
+mov r11,r21
 ldi r20,26
 rjmp wait20A
 
@@ -368,8 +368,8 @@ wait20A:
 ldi r21,0xff
 subi r20,1
 brne wait20B
-mov r20,r0
-mov r21,r1
+mov r20,r8
+mov r21,r11
 ret
 
 wait20B:
@@ -382,8 +382,8 @@ rjmp wait20B
  
 ;30 (9*0.0000005)(256)(26)=0.029seg
 wait30:
-mov r0,r20
-mov r1,r21
+mov r8,r20
+mov r11,r21
 ldi r20,26
 rjmp wait30A
 
@@ -391,8 +391,8 @@ wait30A:
 ldi r21,0xff
 subi r20,1
 brne wait30B
-mov r20,r0
-mov r21,r1
+mov r20,r8
+mov r21,r11
 ret
 
 wait30B:
@@ -407,8 +407,8 @@ rjmp wait30B
 
 ;40 (12(0.0000005))(256)(26)=0.039seg
 wait40:
-mov r0,r20
-mov r1,r21
+mov r8,r20
+mov r11,r21
 ldi r20,26
 rjmp wait40A
 
@@ -416,8 +416,8 @@ wait40A:
 ldi r21,0xff
 subi r20,1
 brne wait40B
-mov r20,r0
-mov r21,r1
+mov r20,r8
+mov r21,r11
 ret
 
 wait40B:
@@ -860,32 +860,32 @@ rjmp izquiergir
 getborfas:
 in bordes,pinf
 nop
-in r1,pinf
-cpse bordes,r1
+in r12,pinf
+cpse bordes,r12
 rjmp getbordes
 ret
 
 getioa:
 in ioa,pinc
 call wait10
-in r1,pinc
-cpse ioa,r1
+in r21,pinc
+cpse ioa,r12
 rjmp getioa
 ret
 
 getiob:
 in iob,pind
 call wait10
-in r1,pind
-cpse iob,r1
+in r12,pind
+cpse iob,r12
 rjmp getiob
 ret
 
 getbordes:
 in bordes,pinf
 call wait10
-in r1,pinf
-cpse bordes,r1
+in r12,pinf
+cpse bordes,r12
 rjmp getbordes
 ret
 
@@ -986,6 +986,7 @@ ret
 ;r28-19 = aux
 
 subindi: ;esta rutina es la conexion entre cuerda y cuenta paso.
+ldi r23,40
 andi sector,0x03
 cpi sector,1
 breq ssetsecB
