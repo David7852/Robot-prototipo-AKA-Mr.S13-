@@ -11,7 +11,7 @@
 ;r25 = X actual
 ;r26 = Y actual
 ;r27 = sentido (abajo 00, arriba 01, derecha 02, izquierda 03,  con el eje ortocentrico en el sector A borde izquierdo)
-;r28-19 = aux
+;r28 = numero de pasos para 16cm
 ;.......
 ;r2 = I/O puerto C (sector A)
 ;r3 = I/O puerto D (sector B)
@@ -39,6 +39,7 @@
 ;lee la posicion de objeto
 ;initial setup port
 ldi r23,40
+ldi r28,35
 ldi r19,0xff
 out portc,r19
 out portd,r19
@@ -115,6 +116,14 @@ rjmp getbordes
 ret
 ;Rutinas para generar retardos a (20 mhz)
 ;20ms (7*0.0000005)(256)(26)=0.022seg
+
+waitdo:
+call wait20
+inc r19
+cpse r19,r28
+rjmp waitto
+ret
+
 waitto:
 call wait20
 inc r19
@@ -217,7 +226,8 @@ and motores,aux1
 ldi aux1,0x0a
 eor motores,aux1
 out portb,motores
-call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+ldi r19,0
+call waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 ret
 
 pasoadel:
@@ -226,7 +236,8 @@ and motores,aux1
 ldi aux1, 0x05
 eor motores,aux1
 out portb,motores
-call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+ldi r19,0
+call waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 ret
 
 parar:
@@ -597,7 +608,11 @@ jmp turnright
 
 reverse:
 call pasoatra
-jmp reverse
+mov r22,r16
+call getval
+cpi r19,0
+breq GOBACK
+rjmp deducir
 
 fordward:
 call pasoadel
@@ -605,13 +620,7 @@ mov r22,r16
 call getval
 cpi r19,0
 breq GOBACK
-mov r20,r25
-mov r21,r26
-call getNxy
-call getval
-cpi r19,1
-breq deducir
-jmp fordward
+rjmp deducir
 
 turnright:
 call pasoizq
@@ -648,7 +657,7 @@ mov r31,r4
 sbrc r31,0
 jmp gostop
 sbrs r27,1
-call pasoatra
+call atras
 sbrs r27,1
 rjmp backa
 ldi r30,2
@@ -666,7 +675,7 @@ mov r31,r4
 sbrc r31,1
 jmp gostop
 sbrs r27,1
-call pasoatra
+call atras
 sbrs r27,1
 rjmp backb
 ldi r30,2
@@ -678,3 +687,12 @@ call pasoizq
 ldi r27,1
 rjmp backb
 ;fin
+
+atras:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x0a
+eor motores,aux1
+out portb,motores
+call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+ret
