@@ -788,16 +788,7 @@ ldi cub,0xff
 inc aux6
 rjmp cuentpaso
 
-cuentpaso:
-cpi aux6,step
-breq cuerdaout
-call adelante
-;***
-;aux1 es resultado de getchang
-sbrc sector,0
-call getchangb
-sbrs sector,0
-call getchanga
+check90:
 ;si cua es igual a aux1+4 o aux1-4, cub igual ff
 ldi aux2,4
 add aux1,aux2
@@ -806,12 +797,63 @@ breq setff
 subi aux1,8
 cp cua,aux1
 breq setff
-;si aux1 es distinto de  ff, guardar en cua aux1
 add aux1,aux2
+ret
+
+setee:
+ldi cub,0xee
+inc aux6
+rjmp cuentpaso
+
+setdd:
+ldi cub,0xdd
+inc aux6
+rjmp cuentpaso
+
+check45:
+;si cua es igual a aux1+4 o aux1-4, cub igual ff
+ldi aux2,3
+add aux1,aux2
+cp cua,aux1
+breq setdd
+subi aux1,6
+cp cua,aux1
+breq setdd
+add aux1,aux2
+ldi aux2,5
+add aux1,aux2
+cp cua,aux1
+breq setee
+subi aux1,10
+cp cua,aux1
+breq setee
+add aux1,aux2
+ret
+
+return:
+ret
+
+cuentpaso:
+cpi aux6,step
+breq cuerdaout
+call adelante
+
+;*** revisa si en mi sector tengo una convinacion con desviacion conocida.
+;aux1 es resultado de getchang
+sbrc sector,0
+call getchangb
+sbrs sector,0
+call getchanga
+;***
+call check90
+call check45
+;***
+;si aux1 es distinto de  ff, guardar en cua aux1
 ldi aux2,0xff
 cpse aux1,aux2
 mov cua,aux1
 ;***
+
 inc aux6
 rjmp cuentpaso
 
@@ -829,11 +871,12 @@ call atras
 inc aux6
 rjmp cuentback
 
-return:
-ret
-
 check:
-cpi cub,0xff
+cpi cub,0xff;saltar a cuenta paso
+breq stopit
+cpi cub,0xee;girar 45 grados izquierda, saltar a cuenta paso
+breq stopit
+cpi cub,0xdd;girar 45 grados derecha, saltar a cuenta paso
 breq stopit
 mov aux4, objn
 call getval
@@ -853,6 +896,8 @@ call parar
 rjmp stopit
 
 planit:;calcula cuanto girar, si 5,10,15,etc, guardando el numero de veces que girar 5 grados en el aux7.
+;queda por hacer un formula que de un numero al que ir restando 1 en uno y que tome como valor la posicion inicial y el obejto
+;planit nunca devolvera nada menor a 1
 ldi aux7,1
 ret
 
