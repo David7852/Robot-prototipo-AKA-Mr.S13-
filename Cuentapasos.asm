@@ -593,7 +593,8 @@ mov r22,r16
 call getval
 cpi r19,0
 breq GOBACK
-jmp fordward
+call adelante
+rjmp deducir
 
 moverdown:
 dec r26
@@ -692,6 +693,15 @@ atras:
 ldi aux1,0xf0
 and motores,aux1
 ldi aux1,0x0a
+eor motores,aux1
+out portb,motores
+call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+ret
+
+adelante:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1, 0x05
 eor motores,aux1
 out portb,motores
 call wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
