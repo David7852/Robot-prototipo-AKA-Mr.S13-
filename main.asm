@@ -911,8 +911,49 @@ ret
 ;r27 = sentido (abajo 00, arriba 01, derecha 02, izquierda 03,  con el eje ortocentrico en el sector A borde izquierdo)
 ;r28-19 = aux
 
+;rutinas de movimiento
+
+der45:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x04
+eor motores,aux1
+out portb,motores
+ldi r19,20
+call waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+ret
+
+izq45:
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x01
+eor motores,aux1
+out portb,motores
+ldi r19,20
+call waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+ret
+
+subindie:
+ldi r23,40
+ldi r28,35
+call izq45
+andi sector,0x03
+cpi sector,1
+breq ssetsecB
+rjmp ssetseca
+
+subindid:
+ldi r23,40
+ldi r28,35
+call der45
+andi sector,0x03
+cpi sector,1
+breq ssetsecB
+rjmp ssetseca
+
 subindi: ;esta rutina es la conexion entre cuerda y cuenta paso.
 ldi r23,40
+ldi r28,35
 andi sector,0x03
 cpi sector,1
 breq ssetsecB
