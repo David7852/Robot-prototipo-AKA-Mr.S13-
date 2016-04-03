@@ -2,7 +2,7 @@
 ;r1 = registro especial (usado por algunas instrucciones de atmel)
 ;r2 = I/O puerto C (sector A)
 ;r3 = I/O puerto D (sector B)
-;r4 = I/O puerto F (Bordes bit 0= A horizontal, bit 1= B horizontal, bit 2 = derecha, bit 3 = izquierda )
+;r4 = I/O puerto F (Bordes bit 0= A hORIzontal, bit 1= B hORIzontal, bit 2 = derecha, bit 3 = izquierda )
 ;r5 = I/O puerto B (motores)
 ;r6 = angulo del vehiculo
 ;.......
@@ -20,15 +20,13 @@
 ;r26 = aux 6
 ;r27 = aux 7
 ;r28 = aux 8
-;r29 = vector cuerda 1
-;r30 = vector cuerda 2
+;r29 = cua : guarda valores relacionados a sensores activos, en especifico, el ultimo sensor
+;r30 = cub : guarda la conclusion del recorrido. ff=esta en 90 grados, ee=45 izquieda, dd=45 derecha. cc=avismo.
 ;r31 = sentido giro. derecha 0, izquierda 1
 ;.......
 ;constantes
 ;step = numero de veces que debe repetirse un RETardo de X milisegundos para avanzar 8cm (media casilla)
 ;giro = numero de veces que debe repetirse un RETardo de X milisegundos para girar 5 grados
-;N0-10 = distancias euclidianas
-;N13 = numero de la secuencia (solo para competencia)
 ;*** 
 .dseg
 .def ioa=r2
@@ -54,7 +52,7 @@
 .def cub=r30
 .def gir=r31
 
-.equ step=20;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 11.45cm (maxima inclinacion, a 45 grados es la medida del sector*1.437)
+.equ step=15;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 11.45cm (maxima inclinacion, a 45 grados es la medida del sector*1.437)
 .equ giro=7;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 
 .cseg 
@@ -198,9 +196,9 @@ MOV r1,r19
 LDI r19,0
 LDI r20,0
 LDI r21,0
-RJMP subgetxy
+RJMP SUBgetxy
 
-subgetxy:
+SUBgetxy:
 CPSE r19,r22
 RJMP loopxy
 MOV aux1,r1
@@ -211,13 +209,13 @@ CPI r20,3
 BREQ eqloopxy
 INC r20
 INC r19
-RJMP subgetxy 
+RJMP SUBgetxy 
 
 eqloopxy:
 INC r21
 LDI r20,0
 INC r19
-RJMP subgetxy
+RJMP SUBgetxy
 
 ;obtener el valor actual de una casilla N
 ;(la casilla a buscar debe estar guardada en r22, el valor (0,1) es devuelto en aux1)
@@ -499,7 +497,9 @@ RJMP fase2
 Fase2:
 CALL flare
 CALL calcuerda
-RJMP fase3
+CALL plan
+LDI cua,0
+JMP check
 ;****
 ;toma de DECisiones
 fase3:
@@ -642,7 +642,7 @@ RJMP launch
 CALL sunless
 RJMP launch
 
-launch: ;MOVer hasta que: se encienda un borde vertical o se encienda un sensor.
+launch: ;MOVer hasta que se encienda un borde vertical o se encienda un sensor
 CALL adelante
 ;comprobar si algun sensor encendio en mi sector (solo revisa mi sector ya que asi evito falsos positivos con el rival)
 LDI aux2,1 ;si estoy en b
@@ -660,7 +660,7 @@ CPSE aux1,aux2
 RJMP exting
 ;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0.
 ;					 si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0.
-; si el registro no es 0, ir a extingub. 
+; si el registro no es 0, ir a extingub 
 CALL getbordes
 ;determinar si fueron los bordes o los sensores (que deberian conservar el valor que envio a extingue)
 MOV aux3,bordes
@@ -670,6 +670,7 @@ BREQ bordea
 RJMP bordeb
 
 bordea:
+LDI cua,0xff
 SBRC aux3,3
 ANDI sector,0x0f;mirando derecha
 SBRC aux3,3
@@ -677,7 +678,7 @@ RJMP setder
 SBRC aux3,3
 RJMP extingue
 SBRC aux3,2
-ori sector,0x80;mirando izquierda
+ORI sector,0x80;mirando izquierda
 SBRC aux3,2
 RJMP setizq
 SBRC aux3,2
@@ -685,8 +686,9 @@ RJMP extingue
 RJMP launch
 
 bordeb:
+LDI cua,0xff
 SBRC aux3,3
-ori sector,0x80;mirando derecha
+ORI sector,0x80;mirando derecha
 SBRC aux3,3
 RJMP setder
 SBRC aux3,3
@@ -708,6 +710,7 @@ LDI gir,1
 RJMP extingue
 
 exting:
+MOV cua,aux1
 LDI aux2,0;si estoy en a
 CP sector,aux2
 BREQ extinga
@@ -751,12 +754,39 @@ SBRC aux3,0
 RET
 RJMP extingue
 
+compxo:
+SUB aux2,objx
+MOV aux7,aux2
+;INC aux7 ??
+RET
+    
+compox:
+MOV aux7,objx
+SUB aux7,aux2
+;INC aux7 ??
+RET
+    
+plan:
+LDI aux2,0xff
+CPSE cua,aux2
+RJMP pla
+RET
+    
+pla:
+MOV aux4,cua
+CALL getxy
+CP objx,aux2
+BRLO compxo
+CPSE objx,aux2
+RJMP compox
+RET
+    
 calcuerda:;si a cuerda=objy*2-1 
 MOV aux1,sector
 MOV aux3,objy
 INC aux3
 LDI aux4,5
-sub aux4,aux3
+SUB aux4,aux3
 ADD aux4,aux4
 DEC aux4
 ADD aux3,aux3
@@ -770,7 +800,7 @@ CPSE aux1,aux2;si estoy en sector a
 MOV cuerda,aux3
 RET
 
-;esto agrega mas de 10 ms al paso de originalmente 22, asi que step deberia dividirse 1.5 de su cantidad original.
+;esto agrega mas de 10 ms al paso de ORIginalmente 22, asi que step deberia dividirse 1.5 de su cantidad ORIginal.
 ;MOVer adelante por cuerda
 cuerdaOUT:
 LDI aux6,0
@@ -898,7 +928,20 @@ RJMP stopit
 planit:;calcula cuanto girar, si 5,10,15,etc, guardando el numero de veces que girar 5 grados en el aux7.
 ;queda por hacer un forMULa que de un numero al que ir restando 1 en uno y que tome como valor la posicion inicial y el obejto
 ;planit nunca devolvera nada menor a 1
+LDI aux8,1
+CPSE aux7,aux8
+RJMP planb
+RET
+
+planb:
+LDI aux8,0
+CPSE aux7,aux8
+RJMP plana
 LDI aux7,1
+RET
+
+plana:
+DEC aux7
 RET
 
 derechagir:

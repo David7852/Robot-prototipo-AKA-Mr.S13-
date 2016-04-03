@@ -2,7 +2,7 @@
 ;r1 = registro especial (usado por algunas instrucciones de atmel)
 ;r2 = I/O puerto C (sector A)
 ;r3 = I/O puerto D (sector B)
-;r4 = I/O puerto F (Bordes bit 0= A horizontal, bit 1= B horizontal, bit 2 = derecha, bit 3 = izquierda )
+;r4 = I/O puerto F (Bordes bit 0= A hORIzontal, bit 1= B hORIzontal, bit 2 = derecha, bit 3 = izquierda )
 ;r5 = I/O puerto B (motores)
 ;r6 = angulo del vehiculo
 ;.......
@@ -198,9 +198,9 @@ MOV  r1,r19
 LDI r19,0
 LDI r20,0
 LDI r21,0
-RJMP subgetxy
+RJMP SUBgetxy
 
-subgetxy:
+SUBgetxy:
 CPSE r19,r22
 RJMP loopxy
 MOV  aux1,r1
@@ -211,13 +211,13 @@ CPI r20,3
 BREQ eqloopxy
 INC r20
 INC r19
-RJMP subgetxy 
+RJMP SUBgetxy 
 
 eqloopxy:
 INC r21
 LDI r20,0
 INC r19
-RJMP subgetxy
+RJMP SUBgetxy
 
 ;obtener el valor actual de una casilla N
 ;(la casilla a buscar debe estar guardada en r22, el valor (0,1) es devuelto en aux1)
@@ -943,6 +943,8 @@ CPI sector,1
 BREQ ssetsecB
 RJMP ssetseca
 
+    ;en caso de que al desviar 45 grados se quede en medio de un sector, usar cua +-5 o +-3 para obtener la casilla de inicio?? si no, ir a rutinca cuenta filas (por crear)
+    
 SUBIndid:
 LDI r23,40
 LDI r28,35
