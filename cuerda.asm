@@ -52,7 +52,8 @@
 .def cub=r30
 .def gir=r31
 
-.equ step=15;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 11.45cm (maxima inclinacion, a 45 grados es la medida del sector*1.437)
+.equ stepb=20
+.equ step=13;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
 .equ giro=7;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 
 .cseg 
@@ -895,7 +896,7 @@ INC aux5
 RJMP cuentback
 
 cuentback:
-CPI aux6,step
+CPI aux6,stepb
 BREQ RETrieve
 CALL atras
 INC aux6
