@@ -121,6 +121,7 @@ waitdo:
 CALL wait20
 INC r19
 CPSE r19,r28
+RJMP waitdo
 RET
 
 waitto:
