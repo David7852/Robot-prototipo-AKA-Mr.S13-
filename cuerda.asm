@@ -74,6 +74,40 @@ JMP fase1
 
 ;rutinas de asistencia
 ;**********
+
+;rutinas para delay de lecturas
+getborfas:
+in bordes,pinf
+NOP 
+in r12,pinf
+CPSE bordes,r12
+RJMP getbordes
+RET
+
+getioa:
+in ioa,pinc
+CALL wait10
+in r12,pinc
+CPSE ioa,r12
+RJMP getioa
+RET
+
+getiob:
+in iob,pind
+CALL wait10
+in r12,pind
+CPSE iob,r12
+RJMP getiob
+RET
+
+getbordes:
+in bordes,pinf
+CALL wait10
+in r12,pinf
+CPSE bordes,r12
+RJMP getbordes
+RET
+
 ;determinar si un sector es rock. (si sector==a && objy<sensor.y) Es roca y devuelve un 0xff en aux1, sino, 00. N de sensor a buscar en aux4
 isrocky:
 MOV r1,aux2
@@ -485,9 +519,68 @@ OUT portb,motores
 CALL wait20;(usar siempre el menor tiempo de espera)
 MOV aux1,r0
 RET
+
+stopit:
+CALL parar
+RJMP stopit
+
+;rutinas de MOVimiento por periodo fijo
+pasoizq:
+LDI aux1,0xf0
+AND motores,aux1
+LDI aux1,0x01
+EOR motores,aux1
+OUT portb,motores
+LDI r19,0
+CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+RET
+
+pasoder:
+LDI aux1,0xf0
+AND motores,aux1
+LDI aux1,0x04
+EOR motores,aux1
+OUT portb,motores
+LDI r19,0
+CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+RET
+
+pasoatra:
+LDI aux1,0xf0
+and motores,aux1
+LDI aux1,0x0a
+EOR motores,aux1
+OUT portb,motores
+LDI r19,0
+CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+RET
+
+pasoadel:
+LDI aux1,0xf0
+and motores,aux1
+LDI aux1, 0x05
+EOR motores,aux1
+OUT portb,motores
+LDI r19,0
+CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+RET
+
+waitdo:
+CALL wait20
+INC r19
+CPSE r19,r28
+RJMP waitdo
+RET
+
+waitto:
+CALL wait20
+INC r19
+CPSE r19,r23
+RJMP waitto
+RET
+
 ;*********
 ;fin
-
 ;inicio
 Fase1:
 CALL seto
@@ -509,7 +602,6 @@ CALL cuerdaOUT
 LDI aux5,0
 CALL RETrieve
 RJMP check
-RJMP stopit
 ;****
 
 seto:;(esperar a que objeto este puesto)
@@ -591,9 +683,9 @@ RET
 ;cada 22 o 29 o 39 milisegundos se va a revisar si algun borde se encendio
 esperanto:
 LDI r19,0xff
-RJMP waitto
+RJMP wait
 
-waitto:
+wait:
 CALL wait20;cambiar aca cual se quiere si 20,30 o 40
 DEC r19
 CALL getborfas
@@ -604,7 +696,7 @@ SBRC r4,1 ;si el pin 1 NO es 0, salta, si lo es continua
 RJMP setseca
 CPI r19,0
 BREQ resolution
-RJMP waitto
+RJMP wait
 
 setsecA:
 LDI r24,0
@@ -904,15 +996,15 @@ RJMP cuentback
 
 check:
 CPI cub,0xff;saltar a cuenta paso
-BREQ stopit
+BREQ stop
 CPI cub,0xee;girar 45 grados izquierda, saltar a cuenta paso
-BREQ stopit
+BREQ stop
 CPI cub,0xdd;girar 45 grados derecha, saltar a cuenta paso
-BREQ stopit
+BREQ stop
 MOV aux4, objn
 CALL getval
 CPI aux1,0
-BREQ stopit
+BREQ stop
 CALL planit
 LDI aux2,1
 CPSE gir,aux2
@@ -922,9 +1014,8 @@ CPSE gir,aux2
 CALL izquiergir
 JMP fase3
 
-stopit:
-CALL parar
-RJMP stopit
+stop:
+jmp stopit
 
 planit:;calcula cuanto girar, si 5,10,15,etc, guardando el numero de veces que girar 5 grados en el aux7.
 ;queda por hacer un forMULa que de un numero al que ir restando 1 en uno y que tome como valor la posicion inicial y el obejto
@@ -976,36 +1067,3 @@ CPSE aux8,aux3
 RJMP girizq
 DEC aux7
 RJMP izquiergir
-
-;rutinas para delay de lecturas
-getborfas:
-in bordes,pinf
-NOP 
-in r12,pinf
-CPSE bordes,r12
-RJMP getbordes
-RET
-
-getioa:
-in ioa,pinc
-CALL wait10
-in r12,pinc
-CPSE ioa,r12
-RJMP getioa
-RET
-
-getiob:
-in iob,pind
-CALL wait10
-in r12,pind
-CPSE iob,r12
-RJMP getiob
-RET
-
-getbordes:
-in bordes,pinf
-CALL wait10
-in r12,pinf
-CPSE bordes,r12
-RJMP getbordes
-RET
