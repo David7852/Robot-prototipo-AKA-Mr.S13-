@@ -995,6 +995,7 @@ INC aux6
 RJMP cuentback
 
 check:
+call parar
 CPI cub,0xff;saltar a cuenta paso
 BREQ stop
 CPI cub,0xee;girar 45 grados izquierda, saltar a cuenta paso

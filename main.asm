@@ -997,6 +997,7 @@ INC aux6
 RJMP cuentback
 
 check:
+call parar
 CPI cub,0xff;saltar a cuenta paso
 BREQ stop
 CPI cub,0xee;girar 45 grados izquierda, saltar a cuenta paso
@@ -1092,8 +1093,6 @@ RJMP izquiergir
 ;r27 = sentido (abajo 00, arriba 01, derecha 02, izquierda 03,  con el eje ortocentrico en el sector A borde izquierdo)
 ;r28-19 = aux
 
-;rutinas de MOVimiento
-
 der45:
 LDI aux1,0xf0
 AND motores,aux1
@@ -1120,10 +1119,10 @@ LDI r28,35
 CALL  izq45
 ANDI sector,0x03
 CPI sector,1
-BREQ ssetsecB
-RJMP ssetseca
+BREQ sets12
+RJMP sets00
 
-    ;en caso de que al desviar 45 grados se quede en medio de un sector, usar cua +-5 o +-3 para obtener la casilla de inicio?? si no, ir a rutinca cuenta filas (por crear)
+;en caso de que al desviar 45 grados se quede en medio de un sector, usar cua +-5 o +-3 para obtener la casilla de inicio?? si no, ir a rutinca cuenta filas (por crear)
     
 SUBIndid:
 LDI r23,40
@@ -1131,8 +1130,52 @@ LDI r28,35
 CALL  der45
 ANDI sector,0x03
 CPI sector,1
-BREQ ssetsecB
-RJMP ssetseca
+BREQ sets15
+RJMP sets03
+
+sets00:
+ldi r22,0
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,0
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+call pasoadel
+;***
+RJMP deducir
+
+sets03:
+ldi r22,3
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,0
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+call pasoadel
+;***
+RJMP deducir
+
+sets12:
+ldi r22,12
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,1
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+call pasoadel
+;***
+RJMP deducir
+
+sets15:
+ldi r22,15
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,1
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+call pasoadel
+;***
+RJMP deducir
 
 ;esta rutina es la conexion entre cuerda y cuenta paso.
 SUBIndi: 
@@ -1144,106 +1187,33 @@ BREQ ssetsecB
 RJMP ssetseca
 
 SsetsecA:
+mov r22, cua
+subi r22,4
+call getxy
+mov r25,r20
+mov r26,r21
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+call pasoadel
+;***
 LDI r24,0
 LDI r27,0
-RJMP stindia
+rjmp deducir
 
 SsetsecB:
+mov r22, cua
+inc r22
+inc r22
+inc r22
+inc r22
+call getxy
+mov r25,r20
+mov r26,r21
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+call pasoadel
+;***
 LDI r24,1
 LDI r27,1
-RJMP stindib
-
-;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
-stindiAA:
-CP r22,objn
-BREQ RETge
-CALL getxy
-MOV r25,r20
-MOV r26,r21
-POP r0
-POP r0
-JMP deducir
-
-retge:
-ret
-
-stindiBB:
-LDI r20,8
-ADD r20,r22
-CP r20,objn
-BREQ RETge
-MOV r22,r20
-CALL getxy
-MOV r25,r20
-MOV r26,r21
-POP r0
-POP r0
-JMP deducir
-;MOVer hasta encender una casilla dentro del tablero en mi sector
-
-stindiA:
-CALL adelante
-CALL getioa
-MOV r25,r2
-CPI r25,0
-BREQ stindiA
-LDI r22,0
-SBRC r25,0
-CALL stindiAA
-INC r22
-SBRC r25,1
-CALL stindiAA
-INC r22
-SBRC r25,2
-CALL stindiAA
-INC r22
-SBRC r25,3
-CALL stindiAA
-INC r22
-SBRC r25,4
-CALL stindiAA
-INC r22
-SBRC r25,5
-CALL stindiAA
-INC r22
-SBRC r25,6
-CALL stindiAA
-INC r22
-SBRC r25,7
-CALL stindiAA
-RJMP stindia
-
-stindiB:
-CALL adelante
-CALL getiob
-MOV r30,r3
-CPI r30,0
-BREQ stindiB
-LDI r22,0
-SBRC r30,0
-CALL stindibb
-INC r22
-SBRC r30,1
-CALL stindibb
-INC r22
-SBRC r30,2
-CALL stindibb
-INC r22
-SBRC r30,3
-CALL stindibb
-INC r22
-SBRC r30,4
-CALL stindibb
-INC r22
-SBRC r30,5
-CALL stindibb
-INC r22
-SBRC r30,6
-CALL stindibb
-INC r22
-SBRC r30,7
-CALL stindibb
-RJMP stindib
+RJMP deducir
 
 MOVerright:
 BREQ RETre
