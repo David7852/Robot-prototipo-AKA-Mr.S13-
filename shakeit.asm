@@ -23,10 +23,6 @@
 ;r29 = cua : guarda valores relacionados a sensores activos, en especifico, el ultimo sensor
 ;r30 = cub : guarda la conclusion del recorrido. ff=esta en 90 grados, ee=45 izquieda, dd=45 derecha. cc=avismo.
 ;r31 = sentido giro. derecha 0, izquierda 1
-;.......
-;constantes
-;step = numero de veces que debe repetirse un RETardo de X milisegundos para avanzar 8cm (media casilla)
-;giro = numero de veces que debe repetirse un RETardo de X milisegundos para girar 5 grados
 ;*** 
 .dseg
 .def ioa=r2
@@ -52,9 +48,9 @@
 .def cub=r30
 .def gir=r31
 
-.equ stepb=20
-.equ step=13;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ giro=7;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ maxstep=6;representa el numero maximo de veces que puede repetirse un step para alcanzar 16cm de avance 5*6=30 ->14cm
+.equ step=5;un paso es el numero de veces que hay que repetir para lograr el avance corto que se quiere. deberia ser poco
+.equ giro=40;un giro es el numero de veces a repetir para 90 grados 
 
 .cseg 
 .include "usb1286def.inc"
@@ -69,16 +65,32 @@ OUT portb,r19
 OUT ddrd,r19
 OUT ddrf,r19
 OUT ddrc,r19
-JMP fase1
+JMP fase0
 ;**********
 
 ;rutinas de asistencia
 ;**********
 
 ;rutinas para delay de lecturas
+getioafas:
+in ioa,pinc
+nop nop nop
+in r12,pinc
+CPSE ioa,r12
+RJMP getioa
+RET
+
+getiobfas:
+in iob,pind
+nop nop nop
+in r12,pind
+CPSE iob,r12
+RJMP getiob
+RET
+
 getborfas:
 in bordes,pinf
-NOP 
+nop nop nop
 in r12,pinf
 CPSE bordes,r12
 RJMP getbordes
@@ -173,7 +185,7 @@ RJMP notis
 ;si no hay cambios, aux1 seria igual a 0xff
 getchanga:
 MOV r0,r20
-CALL getioa
+CALL getioafas
 MOV aux2,ioa
 EOR aux2,aux4
 LDI aux1,0
@@ -211,7 +223,7 @@ RET
 getchangb:
 MOV r0,r20
 MOV r1,r21
-CALL getiob
+CALL getiobfas
 MOV aux2,iob
 EOR aux2,aux4
 LDI aux1,0
@@ -581,9 +593,242 @@ RET
 
 ;*********
 ;fin
+fase0:
+CALL seto
+CALL esperanto
+ldi aux5,0
+JMP fase1
+
+seto:;(esperar a que objeto este puesto)
+CALL getioa
+CALL getiob
+CP r2,r19
+BRNE startA
+CPSE r3,r19
+RJMP startB
+RJMP seto
+
+startA:;setea la posicion del objeto (si esta en sector A)
+SBRC r2,0
+RJMP setstartA
+INC r19
+SBRC r2,1
+RJMP setstartA
+INC r19
+SBRC r2,2
+RJMP setstartA
+INC r19
+SBRC r2,3
+RJMP setstartA
+INC r19
+SBRC r2,4
+RJMP setstartA
+INC r19
+SBRC r2,5
+RJMP setstartA
+INC r19
+SBRC r2,6
+RJMP setstartA
+INC r19
+RJMP setstartA
+
+startB:;setea la posicion del objeto (si esta en sector B)
+SBRC r3,0
+RJMP setstartB
+INC r19
+SBRC r3,1
+RJMP setstartB
+INC r19
+SBRC r3,2
+RJMP setstartB
+INC r19
+SBRC r3,3
+RJMP setstartB
+INC r19
+SBRC r3,4
+RJMP setstartB
+INC r19
+SBRC r3,5
+RJMP setstartB
+INC r19
+SBRC r3,6
+RJMP setstartB
+INC r19
+RJMP setstartB
+
+setstartA:
+MOV r16,r19
+MOV r22,r16
+CALL getxy
+MOV r17,r20
+MOV r18,r21
+RET
+
+setstartB:
+LDI r20,8
+ADD r19,r20
+MOV r16,r19
+MOV r22,r16
+CALL getxy
+MOV r17,r20
+MOV r18,r21
+RET
+
+;rutina de espera.(RETrasa el carro 5.6 seg, 7,4 seg, 9,9 seg respectivamente)
+;cada 22 o 29 o 39 milisegundos se va a revisar si algun borde se encendio
+esperanto:
+LDI r19,0xff
+RJMP wait
+
+wait:
+CALL wait20;cambiar aca cual se quiere si 20,30 o 40
+DEC r19
+CALL getborfas
+;com r4 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
+SBRC r4,0 ;si el pin 0 NO es 0, salta, si lo es continua
+RJMP setsecb
+SBRC r4,1 ;si el pin 1 NO es 0, salta, si lo es continua
+RJMP setseca
+CPI r19,0
+BREQ resolution
+RJMP wait
+
+setsecA:
+LDI r24,0
+RET
+
+setsecB:
+LDI r24,1
+RET
+
+;fin de rutina de espera
+resolution:;(en caso de que algun otro carro TAMBIEN (maLDItos) este esperando o nosotros estemos solos)
+CALL adelante
+CALL getbordes
+LDI aux1,0x03
+and bordes,aux1
+LDI aux1,0
+CP bordes,aux1
+BREQ resolution
+LDI aux1,1
+CP bordes, aux1
+BREQ setsecA
+RJMP setsecB
 
 fase1:
+ldi r28,step;si se integra con cuerda o cuenta paso, aca cambiar
+ldi r23,giro;si se integra con cuerda o cuenta paso, aca cambiar
 ldi aux3,0
 call moveit
+ldi aux3,0
 call shakeit
+ldi aux3,0
+inc aux5
+cpi aux5,maxstep
+breq pushit
 rjmp fase1
+
+pushit:
+call derecha
+inc aux3
+cpi aux3,giro
+brlo pushit
+jmp pushpush
+
+pushpush:;3 pasos adelante son 8cm aprox
+ldi aux3,0
+call pasoadel
+call pasoadel
+call pasoadel
+rjmp rushit
+
+rushit:
+call izquierda
+inc aux3
+cpi aux3,giro
+brlo rushit
+ldi aux3,0
+jmp kick
+
+kick:
+call pasoatra
+dec aux5
+cpi aux5,0
+breq fase1
+rjmp kick
+
+moveit:
+cpi aux3,step
+brlo move
+ret
+
+move:
+call pasoadel
+inc aux3
+ldi aux2,0
+cpse sector,aux2;si b
+call getchangb;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+ldi aux2,1
+cpse sector,aux2;si a
+call getchanga;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+cpi aux1,0xff
+breq moveit
+mov cua,aux1
+pop r0
+pop r0
+jmp xxxx;xxxx rutina para cuando encendio en line recta.
+
+shakeit:
+cpi aux3,giro
+brlo shake
+jmp unshakeit
+
+shake:
+call derecha
+inc aux3
+ldi aux2,0
+cpse sector,aux2;si b
+call getchangb;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+ldi aux2,1
+cpse sector,aux2;si a
+call getchanga ;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+cpi aux1,0xff
+breq shakeit
+mov cua,aux1
+mov cub,aux3
+pop r0
+pop r0
+jmp baby
+
+unshakeit:
+call izquierda
+dec aux3
+ldi aux2,0
+nop nop nop nop
+cpse aux3,aux2
+rjmp unshakeit
+ret
+
+baby:
+call izquierda
+dec aux3
+ldi aux2,0
+nop nop nop nop
+cpse aux3,aux2
+rjmp baby
+ldi aux3,giro
+sub aux3,cub
+rjmp shakeagain
+
+shakeagain:
+call izquierda
+dec aux3
+ldi aux2,0
+nop nop nop nop
+cpse aux3,aux2
+rjmp shakeagain
+jmp yyyy;yyyy rutina para cuando encendio en giro.
+
+xxxx:
+
+yyyy:
