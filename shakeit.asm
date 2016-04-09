@@ -538,6 +538,7 @@ RJMP stopit
 
 ;rutinas de MOVimiento por periodo fijo
 pasoizq:
+mov r0,r19
 LDI aux1,0xf0
 AND motores,aux1
 LDI aux1,0x01
@@ -545,9 +546,11 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
 RET
 
 pasoder:
+mov r0,r19
 LDI aux1,0xf0
 AND motores,aux1
 LDI aux1,0x04
@@ -555,19 +558,24 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
 RET
 
 pasoatra:
+mov r0,r19
 LDI aux1,0xf0
 and motores,aux1
 LDI aux1,0x0a
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
+mov r19,r0
 CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
 RET
 
 pasoadel:
+mov r0,r19
 LDI aux1,0xf0
 and motores,aux1
 LDI aux1, 0x05
@@ -575,6 +583,7 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
 RET
 
 waitdo:
@@ -716,6 +725,7 @@ BREQ setsecA
 RJMP setsecB
 
 fase1:
+ldi aux4,0
 ldi r28,step;si se integra con cuerda o cuenta paso, aca cambiar
 ldi r23,giro;si se integra con cuerda o cuenta paso, aca cambiar
 ldi aux3,0
@@ -1159,4 +1169,3 @@ CALL pasoizq
 LDI r27,1
 RJMP backb
 ;fin
-

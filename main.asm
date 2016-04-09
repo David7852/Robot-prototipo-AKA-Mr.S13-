@@ -526,6 +526,7 @@ RJMP stopit
 
 ;rutinas de MOVimiento por periodo fijo
 pasoizq:
+mov r0,r19
 LDI aux1,0xf0
 AND motores,aux1
 LDI aux1,0x01
@@ -533,9 +534,11 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
 RET
 
 pasoder:
+mov r0,r19
 LDI aux1,0xf0
 AND motores,aux1
 LDI aux1,0x04
@@ -543,19 +546,24 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
 RET
 
 pasoatra:
+mov r0,r19
 LDI aux1,0xf0
 and motores,aux1
 LDI aux1,0x0a
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
+mov r19,r0
 CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
 RET
 
 pasoadel:
+mov r0,r19
 LDI aux1,0xf0
 and motores,aux1
 LDI aux1, 0x05
@@ -563,6 +571,7 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
 RET
 
 waitdo:
