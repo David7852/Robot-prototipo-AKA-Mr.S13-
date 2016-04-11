@@ -976,9 +976,65 @@ LDI aux2,0xff
 CPSE aux1,aux2
 MOV cua,aux1
 ;***
-
+mov aux4,aux1
+call isrocky
+cpi aux1,0xff
+breq rockshock
+call isfall
+cpi aux1,0xff
+breq fallfall
 INC aux6
 RJMP cuentpaso
+
+rockshock: ;ir atas hasta que se encida mi borde, saltar a fase3.
+CALL atras
+CALL getborfas
+MOV aux3,bordes
+MOV aux1,sector
+ANDI aux1,0x03
+SBRC aux1,0
+RJMP RB
+SBRS aux1,0
+RJMP Ra
+RJMP rockshock
+
+Rb:
+SBRC aux3,1
+jmp fase3
+RJMP rockshock
+
+Ra:
+SBRC aux3,0
+jmp fase3
+RJMP extingue
+
+fallfall: ;ir atras hasta que se encienda borde, invertir giro, saltar a fase3.
+CALL atras
+CALL getborfas
+MOV aux3,bordes
+MOV aux1,sector
+ANDI aux1,0x03
+SBRC aux1,0
+RJMP fB
+SBRS aux1,0
+RJMP fa
+RJMP fallfall
+
+fb:
+SBRS aux3,1
+RJMP rockshock
+com gir
+andi gir,0x01
+jmp fase3
+
+
+fa:
+SBRS aux3,0
+RJMP extingue
+com gir
+andi gir,0x01
+jmp fase3
+
 
 RETrieve:
 LDI aux6,0
