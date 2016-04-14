@@ -792,13 +792,13 @@ RJMP launch
 bordeb:
 LDI cua,0xff
 SBRC aux3,3
-ORI sector,0x80;mirando derecha
+ORI sector,0x80;mirando izquierda
 SBRC aux3,3
 RJMP setder
 SBRC aux3,3
 RJMP extingue
 SBRC aux3,2
-ANDI sector,0x0f;mirando izquierda
+ANDI sector,0x0f;mirando derecha
 SBRC aux3,2
 RJMP setizq
 SBRC aux3,2

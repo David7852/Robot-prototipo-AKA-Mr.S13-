@@ -157,12 +157,22 @@ RET
 
 ;determinar si un sector es fall. (si gir==izq && objx>sensor.x) Es roca y devuelve un 0xff en aux1, sino, 00. N de sensor a buscar en aux4
 isfalla:
+call getborfas
+SBRC bordes,3
+rjmp setis
+SBRC bordes,2
+rjmp setis
 CALL getxy
 CP aux2,objx
 BRGE notis
 RJMP setis
 
 isfallo:
+call getborfas
+SBRC bordes,3
+rjmp setis
+SBRC bordes,2
+rjmp setis
 CALL getxy
 CP aux2,objx
 BRGE setis
