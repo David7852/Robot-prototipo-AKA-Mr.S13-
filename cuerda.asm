@@ -18,8 +18,8 @@
 ;r24 = sectores (primeros 4 bits: 0000 A, 0001 B. ultimos 4 bits: 0000 derecha, 1000 izquierda, 11111111 es unknow)
 ;r25 = aux 5
 ;r26 = aux 6
-;r27 = aux 7
-;r28 = aux 8
+;r27 = gua
+;r28 = gub
 ;r29 = cua : guarda valores relacionados a sensores activos, en especifico, el ultimo sensor
 ;r30 = cub : guarda la conclusion del recorrido. ff=esta en 90 grados, ee=45 izquieda, dd=45 derecha. cc=avismo.
 ;r31 = sentido giro. derecha 0, izquierda 1
@@ -46,13 +46,13 @@
 .def sector=r24
 .def aux5=r25
 .def aux6=r26
-.def aux7=r27
-.def aux8=r28
+.def gua=r27
+.def gub=r28
 .def cua=r29
 .def cub=r30
 .def gir=r31
 
-.equ stepb=20
+.equ stepb=20;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
 .equ step=13;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
 .equ giro=7;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 
@@ -157,22 +157,12 @@ RET
 
 ;determinar si un sector es fall. (si gir==izq && objx>sensor.x) Es roca y devuelve un 0xff en aux1, sino, 00. N de sensor a buscar en aux4
 isfalla:
-call getborfas
-SBRC bordes,3
-rjmp setis
-SBRC bordes,2
-rjmp setis
 CALL getxy
 CP aux2,objx
 BRGE notis
 RJMP setis
 
 isfallo:
-call getborfas
-SBRC bordes,3
-rjmp setis
-SBRC bordes,2
-rjmp setis
 CALL getxy
 CP aux2,objx
 BRGE setis
@@ -484,8 +474,8 @@ and motores,aux1
 LDI aux1,0x01
 EOR motores,aux1
 OUT portb,motores
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 MOV aux1,r0
+CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 derecha:
@@ -495,8 +485,8 @@ and motores,aux1
 LDI aux1,0x04
 EOR motores,aux1
 OUT portb,motores
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 MOV aux1,r0
+CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 atras:
@@ -506,8 +496,8 @@ and motores,aux1
 LDI aux1,0x0a
 EOR motores,aux1
 OUT portb,motores
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 MOV aux1,r0
+CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 adelante:
@@ -517,8 +507,8 @@ and motores,aux1
 LDI aux1, 0x05
 EOR motores,aux1
 OUT portb,motores
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 MOV aux1,r0
+CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 parar:
@@ -526,8 +516,8 @@ MOV r0,aux1
 LDI aux1,0xf0
 and motores,aux1
 OUT portb,motores
-CALL wait20;(usar siempre el menor tiempo de espera)
 MOV aux1,r0
+CALL wait20;(usar siempre el menor tiempo de espera)
 RET
 
 stopit:
@@ -536,6 +526,9 @@ RJMP stopit
 
 ;rutinas de MOVimiento por periodo fijo
 pasoizq:
+mov r0,r19
+mov r12,r23
+ldi r23,giro
 LDI aux1,0xf0
 AND motores,aux1
 LDI aux1,0x01
@@ -543,9 +536,14 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
+mov r23,r12
 RET
 
 pasoder:
+mov r0,r19
+mov r12,r23
+ldi r23,giro
 LDI aux1,0xf0
 AND motores,aux1
 LDI aux1,0x04
@@ -553,19 +551,30 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
+mov r23,r12
 RET
 
 pasoatra:
+mov r0,r19
+mov r12,r23
+ldi r23,stepb
 LDI aux1,0xf0
 and motores,aux1
 LDI aux1,0x0a
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
+mov r19,r0
 CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
+mov r23,r12
 RET
 
 pasoadel:
+mov r0,r19
+mov r12,r23
+ldi r23,step
 LDI aux1,0xf0
 and motores,aux1
 LDI aux1, 0x05
@@ -573,6 +582,8 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
+mov r23,r12
 RET
 
 waitdo:
@@ -591,6 +602,7 @@ RET
 
 ;*********
 ;fin
+
 ;inicio
 Fase1:
 CALL seto
@@ -859,14 +871,14 @@ RJMP extingue
 
 compxo:
 SUB aux2,objx
-MOV aux7,aux2
-;INC aux7 ??
+MOV gua,aux2
+;INC gua ??
 RET
     
 compox:
-MOV aux7,objx
-SUB aux7,aux2
-;INC aux7 ??
+MOV gua,objx
+SUB gua,aux2
+;INC gua ??
 RET
     
 plan:
@@ -1084,53 +1096,53 @@ JMP fase3
 stop:
 jmp stopit
 
-planit:;calcula cuanto girar, si 5,10,15,etc, guardando el numero de veces que girar 5 grados en el aux7.
+planit:;calcula cuanto girar, si 5,10,15,etc, guardando el numero de veces que girar 5 grados en el gua.
 ;queda por hacer un forMULa que de un numero al que ir restando 1 en uno y que tome como valor la posicion inicial y el obejto
 ;planit nunca devolvera nada menor a 1
-LDI aux8,1
-CPSE aux7,aux8
+LDI gub,1
+CPSE gua,gub
 RJMP planb
 RET
 
 planb:
-LDI aux8,0
-CPSE aux7,aux8
+LDI gub,0
+CPSE gua,gub
 RJMP plana
-LDI aux7,1
+LDI gua,1
 RET
 
 plana:
-DEC aux7
+DEC gua
 RET
 
 derechagir:
-LDI aux8,0
-CPSE aux7,aux8
+LDI gub,0
+CPSE gua,gub
 RJMP girder
 RET
 
 girder:
-INC aux8
+INC gub
 LDI aux3,giro
-CPSE aux8,aux3
+CPSE gub,aux3
 CALL derecha
-CPSE aux8,aux3
+CPSE gub,aux3
 RJMP girder
-DEC aux7
+DEC gua
 RJMP derechagir
 
 izquiergir:
-LDI aux8,0
-CPSE aux7,aux8
+LDI gub,0
+CPSE gua,gub
 RJMP girizq
 RET
 
 girizq:
-INC aux8
+INC gub
 LDI aux3,giro
-CPSE aux8,aux3
+CPSE gub,aux3
 CALL izquierda
-CPSE aux8,aux3
+CPSE gub,aux3
 RJMP girizq
-DEC aux7
+DEC gua
 RJMP izquiergir
