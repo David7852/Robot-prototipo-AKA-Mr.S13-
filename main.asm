@@ -76,9 +76,24 @@ JMP fase1
 ;**********
 
 ;rutinas para delay de lecturas
+getioafas:
+in ioa,pinc
+nop nop nop
+in r12,pinc
+CPSE ioa,r12
+RJMP getioa
+RET
+
+getiobfas:
+nop nop nop
+in r12,pind
+CPSE iob,r12
+RJMP getiob
+RET
+
 getborfas:
 in bordes,pinf
-NOP 
+nop nop nop
 in r12,pinf
 CPSE bordes,r12
 RJMP getbordes

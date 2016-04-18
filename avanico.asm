@@ -76,9 +76,24 @@ JMP fase1
 ;**********
 
 ;rutinas para delay de lecturas
+getioafas:
+in ioa,pinc
+nop nop nop
+in r12,pinc
+CPSE ioa,r12
+RJMP getioa
+RET
+
+getiobfas:
+nop nop nop
+in r12,pind
+CPSE iob,r12
+RJMP getiob
+RET
+
 getborfas:
 in bordes,pinf
-NOP 
+nop nop nop
 in r12,pinf
 CPSE bordes,r12
 RJMP getbordes
@@ -173,7 +188,7 @@ RJMP notis
 ;si no hay cambios, aux1 seria igual a 0xff
 getchanga:
 MOV r0,r20
-CALL getioa
+CALL getioafas
 MOV aux2,ioa
 EOR aux2,aux4
 LDI aux1,0
@@ -211,7 +226,7 @@ RET
 getchangb:
 MOV r0,r20
 MOV r1,r21
-CALL getiob
+CALL getiobfas
 MOV aux2,iob
 EOR aux2,aux4
 LDI aux1,0
@@ -261,7 +276,7 @@ BRSH getvalB
 RJMP getvalA
 
 getvalB:
-CALL getiob
+CALL getiobfas
 LDI r20,8
 LDI r19,0
 SBRC r3,0
@@ -313,7 +328,7 @@ MOV r20,r0
 RET
 
 getvalA:
-CALL getioa
+CALL getioafas
 LDI r20,0
 LDI r19,0
 SBRC r2,0
@@ -607,6 +622,9 @@ fase0:
 CALL seto
 CALL esperanto
 ldi aux5,0
+ldi cua,0xff
+ldi gua,0xff
+ldi gub,0xff
 JMP fase1
 
 seto:;(esperar a que objeto este puesto)
@@ -725,448 +743,124 @@ CP bordes, aux1
 BREQ setsecA
 RJMP setsecB
 
-fase1:
-ldi aux4,0
-ldi r28,step;si se integra con cuerda o cuenta paso, aca cambiar
-ldi r23,giro;si se integra con cuerda o cuenta paso, aca cambiar
-ldi aux3,0
-call moveit
-ldi aux3,0
-call shakeit
-ldi aux3,0
-inc aux5
-cpi aux5,maxstep
-breq pushit
-rjmp fase1
-
-pushit:
-call derecha
-inc aux3
-cpi aux3,giro
-brlo pushit
-jmp pushpush
-
-pushpush:;3 pasos adelante son 8cm aprox
-ldi aux3,0
-call pasoadel
-call pasoadel
-call pasoadel
-rjmp rushit
-
-rushit:
-call izquierda
-inc aux3
-cpi aux3,giro
-brlo rushit
-ldi aux3,0
-jmp kick
-
-kick:
-call pasoatra
-dec aux5
-cpi aux5,0
-breq fase1
-rjmp kick
-
-moveit:
-cpi aux3,step
-brlo move
+returnori: ;restar aux3 hasta hacerlo cero
+ldi aux2,0
+cpse aux3,aux2
+rjmp toori
+call parar
+com gir
+andi gir,0x01
 ret
 
-move:
-call pasoadel
-inc aux3
-ldi aux2,0
-cpse sector,aux2;si b
-call getchangb;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
-ldi aux2,1
-cpse sector,aux2;si a
-call getchanga;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
-cpi aux1,0xff
-breq moveit
-mov cua,aux1
-pop r0
-pop r0
-ldi aux3,0
-jmp xxxx;xxxx rutina para cuando encendio en line recta.
-
-shakeit:
-cpi aux3,giro
-brlo shake
-jmp unshakeit
-
-shake:
+toori:
+dec aux3
+cpse gir,aux2
 call derecha
-inc aux3
+ldi aux2, 1
+cpse gir,aux2
+call izquierda
+rjmp returnori
+
+fase1:
+call pasoadel
+ldi aux3,0
+ldi gir,0
+
+derechagav:
+cpi aux3,giro
+brlo derechag
+ldi gua,0xff
+call returnori
+jmp izqgav
+
+derechag:
 ldi aux2,0
 cpse sector,aux2;si b
 call getchangb;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
 ldi aux2,1
 cpse sector,aux2;si a
 call getchanga ;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+inc aux3
+call derecha
 cpi aux1,0xff
-breq shakeit
+breq derechagav
+
+componD:
 mov cua,aux1
-mov cub,aux3
-pop r0
-pop r0
-jmp baby
+mov gua,aux3
+call returnori
 
-unshakeit:
-call izquierda
-dec aux3
+izqgav:
+cpi aux3,giro
+brlo izqg
+ldi gub,0xff
+call returnori
+rjmp checkonori
+
+izqg:
 ldi aux2,0
-nop nop nop nop
-cpse aux3,aux2
-rjmp unshakeit
-ret
-
-baby:
+cpse sector,aux2;si b
+call getchangb;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+ldi aux2,1
+cpse sector,aux2;si a
+call getchanga ;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+inc aux3
 call izquierda
-dec aux3
-ldi aux2,0
-nop nop nop nop
-cpse aux3,aux2
-rjmp baby
-ldi aux3,giro
-sub aux3,cub
-rjmp shakeagain
+cpi aux1,0xff
+breq izqgav
 
-shakeagain:
+componI:
+mov cua,aux1
+mov gub,aux3
+call returnori
+
+checkonori:
+cpse gua,gub
+rjmp nonequal
+cpi gua,0xff
+breq fase1;aca es porque aun no llega al acance de algun sensor
+jmp stopit;aca es porque esta en linea recta entre dos sensores
+
+nonequal:
+cpi gua,0xff
+breq guaff
+cpi gub,0xff
+breq gubff
+cp gua,gub
+brlo guamin
+
+gubmin:
+mov cub,gua
+sub cub,gub
+ldi aux2,0
+jmp derecub
+
+guamin:
+mov cub,gub
+sub cub,gua
+ldi aux2,0
+jmp izqcub
+
+gubff:
+mov cub,giro
+sub cub,gua
+rjmp izqcub
+
+guaff:
+ldi cub,giro
+sub cub,gub
+rjmp derecub
+
+derecub:
+call derecha
+dec cub
+cpse cub,aux2
+rjmp derecub
+jmp stopit
+
+izqcub:
 call izquierda
-dec aux3
-ldi aux2,0
-nop nop nop nop
-cpse aux3,aux2
-rjmp shakeagain
-jmp gohome;yyyy rutina para cuando encendio en giro.
-
-check90:
-;si cua es igual a aux1+4 o aux1-4, cub igual ff
-LDI aux2,4
-ADD aux1,aux2
-CP cua,aux1
-BREQ gohome
-SUBI aux1,8
-CP cua,aux1
-BREQ gohome
-ADD aux1,aux2
-RET
-
-setee:
-LDI cub,0xee
-LDI aux1,0xf0
-AND motores,aux1
-LDI aux1,0x01
-EOR motores,aux1
-OUT portb,motores
-LDI r19,20
-ldi r23,40
-CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
-jmp gohome
-
-setdd:
-LDI cub,0xdd
-LDI aux1,0xf0
-AND motores,aux1
-LDI aux1,0x04
-EOR motores,aux1
-OUT portb,motores
-LDI r19,20
-ldi r23,40
-CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
-jmp gohome
-
-gohome:
-call atras
-call getborfas
-mov aux3,bordes
-andi aux3,0x03
-SBRC sector,0
-andi aux3,0x02
-SBRS sector,0
-andi aux3,0x01
-cpi aux3,0
-breq gohome
-;jmp fase1;se llego al inicio y vuelve a empezar porque.... algo paso.... aca quizas deba pasar a cuerda? cuentapaso?
-jmp exting
-
-check45:
-;si cua es igual a aux1+4 o aux1-4, cub igual ff
-LDI aux2,3
-ADD aux1,aux2
-CP cua,aux1
-BREQ setdd
-SUBI aux1,6
-CP cua,aux1
-BREQ setdd
-ADD aux1,aux2
-LDI aux2,5
-ADD aux1,aux2
-CP cua,aux1
-BREQ setee
-SUBI aux1,10
-CP cua,aux1
-BREQ setee
-ADD aux1,aux2
-RET
-
-RETurn:
-RET
-
-xxxx:
-CPI aux6,maxstep
-BREQ gohome
-CALL adelante
-;*** revisa si en mi sector tengo una convinacion con desviacion conocida.
-;aux1 es resultado de getchang
-SBRC sector,0
-CALL getchangb
-SBRS sector,0
-CALL getchanga
-;***
-CALL check90
-CALL check45
-;***
-;si aux1 es distinto de  ff, guardar en cua aux1
-LDI aux2,0xff
-CPSE aux1,aux2
-MOV cua,aux1
-;***
-INC aux6
-RJMP xxxx
-
-setder:
-LDI gir,0
-RJMP subindid
-
-setizq:
-LDI gir,1
-RJMP subindie
-
-exting:
-MOV aux1,cua
-LDI aux2,0;si estoy en a
-CP sector,aux2
-BREQ extinga
-LDI aux2,1
-CP sector,aux2;si estoy en b
-BREQ extingb
-
-extinga:
-MOV aux4,aux1
-CALL getxy
-CP objx,aux2
-BRGE setizq
-RJMP setder
-
-extingb:
-MOV aux4,aux1
-CALL getxy
-CP objx,aux2
-BRGE setder
-RJMP setizq
-
-SUBIndie:
-LDI r23,40
-LDI r28,35
-ANDI sector,0x03
-CPI sector,1
-BREQ sets12
-RJMP sets00
-
-;en caso de que al desviar 45 grados se quede en medio de un sector, usar cua +-5 o +-3 para obtener la casilla de inicio?? si no, ir a rutinca cuenta filas (por crear)
-    
-SUBIndid:
-LDI r23,40
-LDI r28,35
-ANDI sector,0x03
-CPI sector,1
-BREQ sets15
-RJMP sets03
-
-sets00:
-ldi r22,0
-call getxy
-mov r25,r20
-mov r26,r21
-LDI r27,0
-;*** mover un paso puesto que se empieza desde el borde, no desde el sector
-call pasoadel
-;***
-RJMP deducir
-
-sets03:
-ldi r22,3
-call getxy
-mov r25,r20
-mov r26,r21
-LDI r27,0
-;*** mover un paso puesto que se empieza desde el borde, no desde el sector
-call pasoadel
-;***
-RJMP deducir
-
-sets12:
-ldi r22,12
-call getxy
-mov r25,r20
-mov r26,r21
-LDI r27,1
-;*** mover un paso puesto que se empieza desde el borde, no desde el sector
-call pasoadel
-;***
-RJMP deducir
-
-sets15:
-ldi r22,15
-call getxy
-mov r25,r20
-mov r26,r21
-LDI r27,1
-;*** mover un paso puesto que se empieza desde el borde, no desde el sector
-call pasoadel
-;***
-RJMP deducir
-
-MOVerright:
-BREQ RETre
-RJMP MOVeright
-
-RETre:
-RET
-
-turnleft:
-CALL pasoder
-JMP fordward
-
-MOVerleft:
-DEC r25
-CPI r27,2
-BREQ reverse
-CPI r27,3
-BREQ fordward
-CPI r27,0
-LDI r27,3
-BREQ turnleft
-JMP turnright
-
-GOBACK:
-LDI r31,1
-CPSE r24,r31
-JMP backA
-JMP backB
-
-MOVeright:
-INC r25
-CPI r27,2
-BREQ fordward
-CPI r27,3
-BREQ reverse
-CPI r27,0
-LDI r27,2
-BREQ turnright
-JMP turnleft
-
-RutSel:
-CP r18,r26
-BRLO MOVerdown
-BRNE MOVerup
-CP r17,r25
-BRLO MOVerleft
-CALL MOVerright
-MOV r22,r16
-CALL getval
-CPI r19,0
-BREQ GOBACK
-CALL adelante
-RJMP deducir
-
-MOVerdown:
-DEC r26
-CPI r27,0
-BREQ reverse
-CPI r27,1
-BREQ fordward
-CPI r27,2
-LDI r27,1
-BREQ turnleft
-JMP turnright
-
-reverse:
-CALL pasoatra
-MOV r22,r16
-CALL getval
-CPI r19,0
-BREQ GOBACK
-RJMP deducir
-
-fordward:
-CALL pasoadel
-MOV r22,r16
-CALL getval
-CPI r19,0
-BREQ GOBACK
-RJMP deducir
-
-turnright:
-CALL pasoizq
-JMP fordward
-
-MOVerup:
-INC r26
-CPI r27,0
-BREQ fordward
-CPI r27,1
-BREQ reverse
-CPI r27,2
-LDI r27,0
-BREQ turnright
-JMP turnleft
-
-deducir:
-CALL parar
-MOV r22,r16
-CALL getval
-LDI r20,0
-CPSE r19,r20
-JMP RutSel
-JMP GOBACK
-;fin rutinas deducir
-
-backA:
-CALL getbordes
-MOV r31,r4
-SBRC r31,0
-JMP stopit
-SBRS r27,1
-CALL atras
-SBRS r27,1
-RJMP backa
-LDI r30,2
-LDI r29,3
-CPSE r27,r30
-CALL pasoizq
-CPSE r27,r29
-CALL pasoder
-LDI r27,0
-RJMP backa
-
-backB:
-CALL getbordes
-MOV r31,r4
-SBRC r31,1
-JMP stopit
-SBRS r27,1
-CALL atras
-SBRS r27,1
-RJMP backb
-LDI r30,2
-LDI r29,3
-CPSE r27,r30
-CALL pasoder
-CPSE r27,r29
-CALL pasoizq
-LDI r27,1
-RJMP backb
-;fin
+dec cub
+cpse cub,aux2
+rjmp izqcub
+jmp stopit
