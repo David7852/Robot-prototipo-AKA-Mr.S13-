@@ -619,18 +619,23 @@ INC r19
 CPSE r19,r23
 RJMP waitto
 RET
-
 ;*********
-;fin
 
+;****
 ;inicio
+;****
 Fase1:
 CALL seto
 CALL esperanto
 RJMP fase2
 ;****
 ;acondicionamiento
+;****
+
 Fase2:
+LDI aux5,step
+add aux5,aux5
+add aux5,aux5
 CALL flare
 CALL calcuerda
 CALL plan
@@ -638,6 +643,8 @@ LDI cua,0
 JMP check
 ;****
 ;toma de DECisiones
+;****
+
 fase3:
 LDI aux5,0
 CALL cuerdaOUT
@@ -731,7 +738,6 @@ wait:
 CALL wait20;cambiar aca cual se quiere si 20,30 o 40
 DEC r19
 CALL getborfas
-;com r4 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
 SBRC r4,0 ;si el pin 0 NO es 0, salta, si lo es continua
 RJMP setsecb
 SBRC r4,1 ;si el pin 1 NO es 0, salta, si lo es continua
@@ -778,12 +784,23 @@ CALL sunless
 RJMP launch
 
 launch: ;MOVer hasta que se encienda un borde vertical o se encienda un sensor
+ldi aux2,0
+CPSE aux5,aux2
+rjmp keeplaunching
+call extingue
+call derecha
+ldi aux5,step
+add aux5,aux5
+add aux5,aux5
+
+keeplaunching:
+DEC aux5
 CALL adelante
-;comprobar si algun sensor encendio en mi sector (solo revisa mi sector ya que asi evito falsos positivos con el rival)
 LDI aux2,1 ;si estoy en b
 CPSE sector,aux2
 MOV aux4,ioa
 CPSE sector,aux2
+;comprobar si algun sensor encendio en mi sector (solo revisa mi sector ya que asi evito falsos positivos con el rival)
 CALL getchanga
 LDI aux2,0
 CPSE sector,aux2
@@ -793,11 +810,8 @@ CALL getchangb
 LDI aux2,0xff
 CPSE aux1,aux2
 RJMP exting
-;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0.
-;					 si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0.
-; si el registro no es 0, ir a extingub 
+;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0. si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0. si el registro no es 0, ir a extingub 
 CALL getbordes
-;determinar si fueron los bordes o los sensores (que deberian conservar el valor que envio a extingue)
 MOV aux3,bordes
 LDI aux2,0;si estoy en a
 CP sector,aux2
@@ -837,10 +851,12 @@ RJMP extingue
 RJMP launch
 
 setder:
+call parar
 LDI gir,0
 RJMP extingue
 
 setizq:
+call parar
 LDI gir,1
 RJMP extingue
 
@@ -1015,32 +1031,32 @@ LDI aux2,0xff
 CPSE aux1,aux2
 MOV cua,aux1
 ;*** comprueba que no se golpearan rocas o avismos
-mov aux4,aux1
-call isrocky
-cpi aux1,0xff
-breq rockshock
-call isfall
-cpi aux1,0xff
-breq fallfall
+MOV aux4,aux1
+CALL isrocky
+CPI aux1,0xff
+BREQ rockshock
+CALL isfall
+CPI aux1,0xff
+BREQ fallfall
 INC aux6
 RJMP cuentpaso
 
 rockshock: ;ir atras hasta que se encida mi borde, saltar a fase3.
-call parar
-pop r0
-pop r0
+CALL parar
+POP r0
+POP r0
 MOV aux1,sector
-call extingue
+CALL extingue
 RJMP check
 
 fallfall: ;ir atras hasta que se encienda borde, invertir giro, saltar a fase3.
-call parar
-pop r0
-pop r0
-com gir
-andi gir,0x01
-call extingue
-rjmp check
+CALL parar
+POP r0
+POP r0
+COM gir
+ANDI gir,0x01
+CALL extingue
+RJMP check
 
 RETrieve:
 LDI aux6,0
@@ -1057,13 +1073,13 @@ INC aux6
 RJMP cuentback
 
 check:
-call parar
+CALL parar
 CPI cub,0xff;saltar a cuenta paso
-BREQ SUBIndi
+BREQ stop
 CPI cub,0xee;girar 45 grados izquierda, saltar a cuenta paso
-BREQ SUBIndie
+BREQ stop
 CPI cub,0xdd;girar 45 grados derecha, saltar a cuenta paso
-BREQ SUBIndid
+BREQ stop
 MOV aux4, objn
 CALL getval
 CPI aux1,0
@@ -1078,7 +1094,7 @@ CALL izquiergir
 JMP fase3
 
 stop:
-jmp stopit
+JMP stopit
 
 planit:;calcula cuanto girar, si 5,10,15,etc, guardando el numero de veces que girar 5 grados en el gua.
 ;queda por hacer un forMULa que de un numero al que ir restando 1 en uno y que tome como valor la posicion inicial y el obejto
@@ -1130,7 +1146,6 @@ CPSE gub,aux3
 RJMP girizq
 DEC gua
 RJMP izquiergir
-
 
 ;********************************************
 

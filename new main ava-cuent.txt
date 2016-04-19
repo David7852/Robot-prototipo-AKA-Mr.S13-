@@ -128,11 +128,6 @@ isrocky:
 MOV r1,aux2
 MOV r13,aux3
 MOV aux1,sector
-call getborfas
-SBRC bordes,2
-rjmp setis
-SBRC bordes,3
-rjmp setis
 ANDI aux1,0x0f
 LDI aux2,0
 CPSE aux1,aux2;si estoy en sector b
@@ -193,7 +188,7 @@ RJMP notis
 ;si no hay cambios, aux1 seria igual a 0xff
 getchanga:
 MOV r0,r20
-CALL getioa
+CALL getioafas
 MOV aux2,ioa
 EOR aux2,aux4
 LDI aux1,0
@@ -231,7 +226,7 @@ RET
 getchangb:
 MOV r0,r20
 MOV r1,r21
-CALL getiob
+CALL getiobfas
 MOV aux2,iob
 EOR aux2,aux4
 LDI aux1,0
@@ -281,7 +276,7 @@ BRSH getvalB
 RJMP getvalA
 
 getvalB:
-CALL getiob
+CALL getiobfas
 LDI r20,8
 LDI r19,0
 SBRC r3,0
@@ -333,7 +328,7 @@ MOV r20,r0
 RET
 
 getvalA:
-CALL getioa
+CALL getioafas
 LDI r20,0
 LDI r19,0
 SBRC r2,0
@@ -619,39 +614,18 @@ INC r19
 CPSE r19,r23
 RJMP waitto
 RET
-;*********
 
-;****
-;inicio
-;****
-Fase1:
+;*********
+;fin
+
+fase0:
 CALL seto
 CALL esperanto
-RJMP fase2
-;****
-;acondicionamiento
-;****
-
-Fase2:
-LDI aux5,step
-add aux5,aux5
-add aux5,aux5
-CALL flare
-CALL calcuerda
-CALL plan
-LDI cua,0
-JMP check
-;****
-;toma de DECisiones
-;****
-
-fase3:
-LDI aux5,0
-CALL cuerdaOUT
-LDI aux5,0
-CALL RETrieve
-RJMP check
-;****
+ldi aux5,0
+ldi cua,0xff
+ldi gua,0xff
+ldi gub,0xff
+JMP fase1
 
 seto:;(esperar a que objeto este puesto)
 CALL getioa
@@ -738,6 +712,7 @@ wait:
 CALL wait20;cambiar aca cual se quiere si 20,30 o 40
 DEC r19
 CALL getborfas
+;com r4 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
 SBRC r4,0 ;si el pin 0 NO es 0, salta, si lo es continua
 RJMP setsecb
 SBRC r4,1 ;si el pin 1 NO es 0, salta, si lo es continua
@@ -756,112 +731,164 @@ RET
 
 ;fin de rutina de espera
 resolution:;(en caso de que algun otro carro TAMBIEN (maLDItos) este esperando o nosotros estemos solos)
-LDI sector,0xff
-RET;(en caso de estar solos en la pista, simplemente sale y comienza a explorar)
-;****
-
-sunless:
 CALL adelante
 CALL getbordes
 LDI aux1,0x03
 and bordes,aux1
 LDI aux1,0
 CP bordes,aux1
-BREQ sunless
+BREQ resolution
 LDI aux1,1
 CP bordes, aux1
 BREQ setsecA
-RJMP setsecB 
-RET
+RJMP setsecB
 
-flare:
-CALL getioa
-CALL getiob
-LDI aux1,0xff
-CPSE sector,aux1
-RJMP launch
-CALL sunless
-RJMP launch
-
-launch: ;MOVer hasta que se encienda un borde vertical o se encienda un sensor
+returnori: ;restar aux3 hasta hacerlo cero
 ldi aux2,0
-CPSE aux5,aux2
-rjmp keeplaunching
-call extingue
+cpse aux3,aux2
+rjmp toori
+call parar
+com gir
+andi gir,0x01
+ret
+
+toori:
+dec aux3
+cpse gir,aux2
 call derecha
-ldi aux5,step
-add aux5,aux5
-add aux5,aux5
+ldi aux2, 1
+cpse gir,aux2
+call izquierda
+rjmp returnori
 
-keeplaunching:
-DEC aux5
-CALL adelante
-LDI aux2,1 ;si estoy en b
-CPSE sector,aux2
-MOV aux4,ioa
-CPSE sector,aux2
-;comprobar si algun sensor encendio en mi sector (solo revisa mi sector ya que asi evito falsos positivos con el rival)
-CALL getchanga
-LDI aux2,0
-CPSE sector,aux2
-MOV aux4,iob
-CPSE sector,aux2
-CALL getchangb
-LDI aux2,0xff
-CPSE aux1,aux2
-RJMP exting
-;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0. si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0. si el registro no es 0, ir a extingub 
-CALL getbordes
-MOV aux3,bordes
-LDI aux2,0;si estoy en a
-CP sector,aux2
-BREQ bordea
-RJMP bordeb
+fase1:
+call pasoadel
+ldi aux3,0
+ldi gir,0
 
-bordea:
-LDI cua,0xff
-SBRC aux3,3
-ANDI sector,0x0f;mirando derecha
-SBRC aux3,3
-RJMP setder
-SBRC aux3,3
-RJMP extingue
-SBRC aux3,2
-ORI sector,0x80;mirando izquierda
-SBRC aux3,2
-RJMP setizq
-SBRC aux3,2
-RJMP extingue
-RJMP launch
+derechagav:
+cpi aux3,giro
+brlo derechag
+ldi gua,0xff
+call returnori
+jmp izqgav
 
-bordeb:
-LDI cua,0xff
-SBRC aux3,3
-ORI sector,0x80;mirando derecha
-SBRC aux3,3
-RJMP setder
-SBRC aux3,3
-RJMP extingue
-SBRC aux3,2
-ANDI sector,0x0f;mirando izquierda
-SBRC aux3,2
-RJMP setizq
-SBRC aux3,2
-RJMP extingue
-RJMP launch
+derechag:
+ldi aux2,0
+cpse sector,aux2;si b
+call getchangb;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+ldi aux2,1
+cpse sector,aux2;si a
+call getchanga ;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+inc aux3
+call derecha
+cpi aux1,0xff
+breq derechagav
 
-setder:
-call parar
-LDI gir,0
-RJMP extingue
+componD:
+mov cua,aux1
+mov gua,aux3
+call returnori
 
-setizq:
-call parar
-LDI gir,1
-RJMP extingue
+izqgav:
+cpi aux3,giro
+brlo izqg
+ldi gub,0xff
+call returnori
+rjmp checkonori
+
+izqg:
+ldi aux2,0
+cpse sector,aux2;si b
+call getchangb;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+ldi aux2,1
+cpse sector,aux2;si a
+call getchanga ;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+inc aux3
+call izquierda
+cpi aux1,0xff
+breq izqgav
+
+componI:
+mov cua,aux1
+mov gub,aux3
+call returnori
+
+checkonori:
+cpse gua,gub
+rjmp nonequal
+cpi gua,0xff
+breq fase1;aca es porque aun no llega al acance de algun sensor
+jmp stopit;aca es porque esta en linea recta entre dos sensores
+
+nonequal:
+cpi gua,0xff
+breq guaff
+cpi gub,0xff
+breq gubff
+cp gua,gub
+brlo guamin
+
+gubmin:
+mov cub,gua
+sub cub,gub
+ldi aux2,0
+jmp derecub
+
+guamin:
+mov cub,gub
+sub cub,gua
+ldi aux2,0
+jmp izqcub
+
+gubff:
+ldi cub,giro
+sub cub,gua
+rjmp izqcub
+
+guaff:
+ldi cub,giro
+sub cub,gub
+rjmp derecub
+
+derecub:
+call derecha
+dec cub
+cpse cub,aux2
+rjmp derecub
+jmp stopit
+
+izqcub:
+call izquierda
+dec cub
+cpse cub,aux2
+rjmp izqcub
+jmp stopit
+
+;********************************************
+
+
+;**** mean while, in a parallel universe ****
+
+
+;********************************************
+
+;r16 = objeto (# casilla)
+;r17 = X objeto
+;r18= Y objeto
+;r19 = aux 1
+;r20 = aux 2
+;r21 = aux 3
+;r22 = N (casilla en busqueda o N de la secuencia)
+;r23 = NDS (Numero de pasos para giro)
+;r24 = sector(00 A 01 B)
+;r25 = X actual
+;r26 = Y actual
+;r27 = sentido (abajo 00, arriba 01, derecha 02, izquierda 03,  con el eje ortocentrico en el sector A borde izquierdo)
+;r28-19 = aux
 
 exting:
-MOV cua,aux1
+MOV aux1,cua
 LDI aux2,0;si estoy en a
 CP sector,aux2
 BREQ extinga
@@ -873,276 +900,241 @@ extinga:
 MOV aux4,aux1
 CALL getxy
 CP objx,aux2
-BRGE setizq
-RJMP setder
+BRGE subindie
+RJMP subindid
 
 extingb:
 MOV aux4,aux1
 CALL getxy
 CP objx,aux2
-BRGE setder
-RJMP setizq
+BRGE subindid
+RJMP subindie
 
-extingue:
-CALL atras
-CALL getbordes
-MOV aux3,bordes
-MOV aux1,sector
-ANDI aux1,0x03
-SBRC aux1,0
-RJMP extb
-SBRS aux1,0
-RJMP exta
-
-extb:
-SBRC aux3,1
-RET
-RJMP extingue
-
-exta:
-SBRC aux3,0
-RET
-RJMP extingue
-
-compxo:
-SUB aux2,objx
-MOV gua,aux2
-;INC gua ??
-RET
+SUBIndie:
+LDI r23,giro
+LDI r28,step
+ANDI sector,0x03
+CPI sector,1
+BREQ sets12
+RJMP sets00
     
-compox:
-MOV gua,objx
-SUB gua,aux2
-;INC gua ??
-RET
-    
-plan:
-LDI aux2,0xff
-CPSE cua,aux2
-RJMP pla
-RET
-    
-pla:
-MOV aux4,cua
-CALL getxy
-CP objx,aux2
-BRLO compxo
-CPSE objx,aux2
-RJMP compox
-RET
-    
-calcuerda:;si a cuerda=objy*2-1 
-MOV aux1,sector
-MOV aux3,objy
-INC aux3
-LDI aux4,5
-SUB aux4,aux3
-ADD aux4,aux4
-DEC aux4
-ADD aux3,aux3
-DEC aux3
-ANDI aux1,0x0f
-LDI aux2,0
-CPSE aux1,aux2;si estoy en sector b
-MOV cuerda, aux4
-LDI aux2,1
-CPSE aux1,aux2;si estoy en sector a
-MOV cuerda,aux3
-RET
+SUBIndid:
+LDI r23,giro
+LDI r28,step
+ANDI sector,0x03
+CPI sector,1
+BREQ sets15
+RJMP sets03
 
-;esto agrega mas de 10 ms al paso de ORIginalmente 22, asi que step deberia dividirse 1.5 de su cantidad ORIginal.
-;MOVer adelante por cuerda
-cuerdaOUT:
-LDI aux6,0
-CP aux5,cuerda
-BREQ RETurn
-INC aux5
+sets00:
+ldi r22,0
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,0
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+call pasoadel
 ;***
-LDI aux4,0
-LDI aux1,0
+RJMP deducir
+
+sets03:
+ldi r22,3
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,0
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+call pasoadel
 ;***
-RJMP cuentpaso
+RJMP deducir
 
-setff:
-LDI cub,0xff
-INC aux6
-RJMP cuentpaso
-
-check90:
-;si cua es igual a aux1+4 o aux1-4, cub igual ff
-LDI aux2,4
-ADD aux1,aux2
-CP cua,aux1
-BREQ setff
-SUBI aux1,8
-CP cua,aux1
-BREQ setff
-ADD aux1,aux2
-RET
-
-setee:
-LDI cub,0xee
-INC aux6
-RJMP cuentpaso
-
-setdd:
-LDI cub,0xdd
-INC aux6
-RJMP cuentpaso
-
-check45:
-;si cua es igual a aux1+4 o aux1-4, cub igual ff
-LDI aux2,3
-ADD aux1,aux2
-CP cua,aux1
-BREQ setdd
-SUBI aux1,6
-CP cua,aux1
-BREQ setdd
-ADD aux1,aux2
-LDI aux2,5
-ADD aux1,aux2
-CP cua,aux1
-BREQ setee
-SUBI aux1,10
-CP cua,aux1
-BREQ setee
-ADD aux1,aux2
-RET
-
-RETurn:
-RET
-
-cuentpaso:
-CPI aux6,step
-BREQ cuerdaOUT
-CALL adelante
-;aux1 es resultado de getchang
-SBRC sector,0
-CALL getchangb
-SBRS sector,0
-CALL getchanga
-;*** revisa si en mi sector tengo una convinacion con desviacion conocida.
-CALL check90
-CALL check45
+sets12:
+ldi r22,12
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,1
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+call pasoadel
 ;***
-;si aux1 es distinto de  ff, guardar en cua aux1
-LDI aux2,0xff
-CPSE aux1,aux2
-MOV cua,aux1
-;*** comprueba que no se golpearan rocas o avismos
-MOV aux4,aux1
-CALL isrocky
-CPI aux1,0xff
-BREQ rockshock
-CALL isfall
-CPI aux1,0xff
-BREQ fallfall
-INC aux6
-RJMP cuentpaso
+RJMP deducir
 
-rockshock: ;ir atras hasta que se encida mi borde, saltar a fase3.
-CALL parar
-POP r0
-POP r0
-MOV aux1,sector
-CALL extingue
-RJMP check
+sets15:
+ldi r22,15
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,1
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+call pasoadel
+;***
+RJMP deducir
 
-fallfall: ;ir atras hasta que se encienda borde, invertir giro, saltar a fase3.
-CALL parar
-POP r0
-POP r0
-COM gir
-ANDI gir,0x01
-CALL extingue
-RJMP check
+;esta rutina es la conexion entre cuerda y cuenta paso.
+SUBIndi: 
+LDI r23,40
+LDI r28,35
+ANDI sector,0x03
+CPI sector,1
+BREQ ssetsecB
+RJMP ssetseca
 
-RETrieve:
-LDI aux6,0
-CP aux5,cuerda
-BREQ RETurn
-INC aux5
-RJMP cuentback
+SsetsecA:
+mov r22, cua
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r24,0
+LDI r27,0
+rjmp deducir
 
-cuentback:
-CPI aux6,stepb
-BREQ RETrieve
-CALL atras
-INC aux6
-RJMP cuentback
+SsetsecB:
+mov r22, cua
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r24,1
+LDI r27,1
+RJMP deducir
 
-check:
-CALL parar
-CPI cub,0xff;saltar a cuenta paso
-BREQ stop
-CPI cub,0xee;girar 45 grados izquierda, saltar a cuenta paso
-BREQ stop
-CPI cub,0xdd;girar 45 grados derecha, saltar a cuenta paso
-BREQ stop
-MOV aux4, objn
+MOVerright:
+BREQ RETre
+RJMP MOVeright
+
+RETre:
+RET
+
+turnleft:
+CALL pasoder
+JMP fordward
+
+MOVerleft:
+DEC r25
+CPI r27,2
+BREQ reverse
+CPI r27,3
+BREQ fordward
+CPI r27,0
+LDI r27,3
+BREQ turnleft
+JMP turnright
+
+GOBACK:
+LDI r31,1
+CPSE r24,r31
+JMP backA
+JMP backB
+
+MOVeright:
+INC r25
+CPI r27,2
+BREQ fordward
+CPI r27,3
+BREQ reverse
+CPI r27,0
+LDI r27,2
+BREQ turnright
+JMP turnleft
+
+RutSel:
+CP r18,r26
+BRLO MOVerdown
+BRNE MOVerup
+CP r17,r25
+BRLO MOVerleft
+CALL MOVerright
+MOV r22,r16
 CALL getval
-CPI aux1,0
-BREQ stop
-CALL planit
-LDI aux2,1
-CPSE gir,aux2
-CALL derechagir
-LDI aux2,0
-CPSE gir,aux2
-CALL izquiergir
-JMP fase3
+CPI r19,0
+BREQ GOBACK
+CALL adelante
+RJMP deducir
 
-stop:
+MOVerdown:
+DEC r26
+CPI r27,0
+BREQ reverse
+CPI r27,1
+BREQ fordward
+CPI r27,2
+LDI r27,1
+BREQ turnleft
+JMP turnright
+
+reverse:
+CALL pasoatra
+MOV r22,r16
+CALL getval
+CPI r19,0
+BREQ GOBACK
+RJMP deducir
+
+fordward:
+CALL pasoadel
+MOV r22,r16
+CALL getval
+CPI r19,0
+BREQ GOBACK
+RJMP deducir
+
+turnright:
+CALL pasoizq
+JMP fordward
+
+MOVerup:
+INC r26
+CPI r27,0
+BREQ fordward
+CPI r27,1
+BREQ reverse
+CPI r27,2
+LDI r27,0
+BREQ turnright
+JMP turnleft
+
+deducir:
+CALL parar
+MOV r22,r16
+CALL getval
+LDI r20,0
+CPSE r19,r20
+JMP RutSel
+JMP GOBACK
+;fin rutinas deducir
+
+backA:
+CALL getbordes
+MOV r31,r4
+SBRC r31,0
 JMP stopit
+SBRS r27,1
+CALL atras
+SBRS r27,1
+RJMP backa
+LDI r30,2
+LDI r29,3
+CPSE r27,r30
+CALL pasoizq
+CPSE r27,r29
+CALL pasoder
+LDI r27,0
+RJMP backa
 
-planit:;calcula cuanto girar, si 5,10,15,etc, guardando el numero de veces que girar 5 grados en el gua.
-;queda por hacer un forMULa que de un numero al que ir restando 1 en uno y que tome como valor la posicion inicial y el obejto
-;planit nunca devolvera nada menor a 1
-LDI gub,1
-CPSE gua,gub
-RJMP planb
-RET
-
-planb:
-LDI gub,0
-CPSE gua,gub
-RJMP plana
-LDI gua,1
-RET
-
-plana:
-DEC gua
-RET
-
-derechagir:
-LDI gub,0
-CPSE gua,gub
-RJMP girder
-RET
-
-girder:
-INC gub
-LDI aux3,giro
-CPSE gub,aux3
-CALL derecha
-CPSE gub,aux3
-RJMP girder
-DEC gua
-RJMP derechagir
-
-izquiergir:
-LDI gub,0
-CPSE gua,gub
-RJMP girizq
-RET
-
-girizq:
-INC gub
-LDI aux3,giro
-CPSE gub,aux3
-CALL izquierda
-CPSE gub,aux3
-RJMP girizq
-DEC gua
-RJMP izquiergir
+backB:
+CALL getbordes
+MOV r31,r4
+SBRC r31,1
+JMP stopit
+SBRS r27,1
+CALL atras
+SBRS r27,1
+RJMP backb
+LDI r30,2
+LDI r29,3
+CPSE r27,r30
+CALL pasoder
+CPSE r27,r29
+CALL pasoizq
+LDI r27,1
+RJMP backb
+;fin
