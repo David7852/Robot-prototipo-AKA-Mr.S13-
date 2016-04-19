@@ -128,6 +128,11 @@ isrocky:
 MOV r1,aux2
 MOV r13,aux3
 MOV aux1,sector
+call getborfas
+SBRC bordes,2
+rjmp setis
+SBRC bordes,3
+rjmp setis
 ANDI aux1,0x0f
 LDI aux2,0
 CPSE aux1,aux2;si estoy en sector b
@@ -872,7 +877,6 @@ SBRC aux1,0
 RJMP extb
 SBRS aux1,0
 RJMP exta
-RJMP extingue
 
 extb:
 SBRC aux3,1
@@ -997,14 +1001,12 @@ cuentpaso:
 CPI aux6,step
 BREQ cuerdaOUT
 CALL adelante
-
-;*** revisa si en mi sector tengo una convinacion con desviacion conocida.
 ;aux1 es resultado de getchang
 SBRC sector,0
 CALL getchangb
 SBRS sector,0
 CALL getchanga
-;***
+;*** revisa si en mi sector tengo una convinacion con desviacion conocida.
 CALL check90
 CALL check45
 ;***
@@ -1012,7 +1014,7 @@ CALL check45
 LDI aux2,0xff
 CPSE aux1,aux2
 MOV cua,aux1
-;***
+;*** comprueba que no se golpearan rocas o avismos
 mov aux4,aux1
 call isrocky
 cpi aux1,0xff
@@ -1023,55 +1025,22 @@ breq fallfall
 INC aux6
 RJMP cuentpaso
 
-rockshock: ;ir atas hasta que se encida mi borde, saltar a fase3.
-CALL atras
-CALL getborfas
-MOV aux3,bordes
+rockshock: ;ir atras hasta que se encida mi borde, saltar a fase3.
+call parar
+pop r0
+pop r0
 MOV aux1,sector
-ANDI aux1,0x03
-SBRC aux1,0
-RJMP RB
-SBRS aux1,0
-RJMP Ra
-RJMP rockshock
-
-Rb:
-SBRC aux3,1
-jmp fase3
-RJMP rockshock
-
-Ra:
-SBRC aux3,0
-jmp fase3
-RJMP extingue
+call extingue
+RJMP check
 
 fallfall: ;ir atras hasta que se encienda borde, invertir giro, saltar a fase3.
-CALL atras
-CALL getborfas
-MOV aux3,bordes
-MOV aux1,sector
-ANDI aux1,0x03
-SBRC aux1,0
-RJMP fB
-SBRS aux1,0
-RJMP fa
-RJMP fallfall
-
-fb:
-SBRS aux3,1
-RJMP rockshock
+call parar
+pop r0
+pop r0
 com gir
 andi gir,0x01
-jmp fase3
-
-
-fa:
-SBRS aux3,0
-RJMP extingue
-com gir
-andi gir,0x01
-jmp fase3
-
+call extingue
+rjmp check
 
 RETrieve:
 LDI aux6,0
