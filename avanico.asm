@@ -625,6 +625,7 @@ ldi aux5,0
 ldi cua,0xff
 ldi gua,0xff
 ldi gub,0xff
+ldi aux4,0
 JMP fase1
 
 seto:;(esperar a que objeto este puesto)
@@ -819,9 +820,20 @@ cpse gua,gub
 rjmp nonequal
 cpi gua,0xff
 breq fase1;aca es porque aun no llega al acance de algun sensor
-jmp stopit;aca es porque esta en linea recta entre dos sensores
+jmp stopit;*aca es porque esta en linea recta entre dos sensores*
 
 nonequal:
+;***si un sensor en mi sector esta encendio, este es mi inicio y estoy en linea recta hacia el.
+SBRC sector,0
+call getchangb
+SBRS sector,0
+call getchanga
+ldi aux2,0xff
+CPSE aux1,aux2
+mov cua,aux1
+CPSE aux1,aux2
+jmp stopit;*aca es porque esta en linea recta entre dos sensores*
+;***
 cpi gua,0xff
 breq guaff
 cpi gub,0xff
@@ -841,16 +853,6 @@ sub cub,gua
 ldi aux2,0
 jmp izqcub
 
-gubff:
-mov cub,giro
-sub cub,gua
-rjmp izqcub
-
-guaff:
-ldi cub,giro
-sub cub,gub
-rjmp derecub
-
 derecub:
 call derecha
 dec cub
@@ -864,3 +866,33 @@ dec cub
 cpse cub,aux2
 rjmp izqcub
 jmp stopit
+
+gubff:
+ldi aux3,0
+ldi gir,1
+
+izqff:
+inc aux3
+call izquierda
+cpi aux3,giro
+brlo izqff
+call pasoadel
+call returnori
+ldi aux3,0
+ldi gir,0
+jmp derechagav
+
+guaff:
+ldi aux3,0
+ldi gir,0
+
+derff:
+inc aux3
+call derecha
+cpi aux3,giro
+brlo derff
+call pasoadel
+call returnori
+ldi aux3,0
+ldi gir,0
+jmp derechagav
