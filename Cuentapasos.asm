@@ -559,7 +559,7 @@ RET
 waitdo:
 CALL wait20
 INC r19
-CPSE r19,r28
+CPSE r19,r23
 RJMP waitdo
 RET
 
