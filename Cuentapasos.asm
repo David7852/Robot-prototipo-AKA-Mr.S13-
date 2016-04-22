@@ -47,8 +47,8 @@
 
 ;lee la posicion de objeto
 ;initial setup port
-LDI r23,40
-LDI r28,35
+LDI r23,32
+LDI r28,27
 LDI r19,0xff
 OUT portc,r19
 OUT portd,r19
@@ -507,7 +507,8 @@ MOV r0,aux1
 LDI aux1,0xf0
 and motores,aux1
 OUT portb,motores
-CALL wait20;(usar siempre el menor tiempo de espera)
+ldi r19,0
+CALL waitdo;(usar siempre el menor tiempo de espera)
 MOV aux1,r0
 RET
 
@@ -559,7 +560,7 @@ RET
 waitdo:
 CALL wait20
 INC r19
-CPSE r19,r23
+CPSE r19,r28
 RJMP waitdo
 RET
 
@@ -776,6 +777,7 @@ RET
 
 turnleft:
 CALL pasoder
+call parar
 JMP fordward
 
 MOVerleft:
@@ -818,6 +820,10 @@ CALL getval
 CPI r19,0
 BREQ GOBACK
 CALL adelante
+CALL adelante
+CALL adelante
+CALL adelante
+CALL adelante
 RJMP deducir
 
 MOVerdown:
@@ -849,6 +855,7 @@ RJMP deducir
 
 turnright:
 CALL pasoizq
+call parar
 JMP fordward
 
 MOVerup:
