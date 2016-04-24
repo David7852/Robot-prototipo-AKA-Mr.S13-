@@ -40,6 +40,7 @@
 .def cua=r29
 .def cub=r30
 .def gir=r31
+.equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
 
 .cseg 
 .include "usb1286def.inc"
@@ -504,12 +505,15 @@ RET
 
 parar:
 MOV r0,aux1
+MOV r12,r23
+ldi r23,stepstop
 LDI aux1,0xf0
 and motores,aux1
 OUT portb,motores
 ldi r19,0
-CALL waitdo;(usar siempre el menor tiempo de espera)
-MOV aux1,r0
+CALL waitto;(usar siempre el menor tiempo de espera)
+mov r19,r0
+mov r23,r12
 RET
 
 stopit:
@@ -685,6 +689,20 @@ MOV r25,r20
 MOV r26,r21
 POP r0
 POP r0
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
 JMP deducir
 
 retge:
@@ -701,6 +719,20 @@ MOV r25,r20
 MOV r26,r21
 POP r0
 POP r0
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
+call atras
 JMP deducir
 ;MOVer hasta encender una casilla dentro del tablero en mi sector
 
@@ -877,6 +909,7 @@ LDI r20,0
 CPSE r19,r20
 JMP RutSel
 JMP GOBACK
+
 ;fin rutinas deducir
 
 backA:
@@ -915,4 +948,3 @@ CALL pasoizq
 LDI r27,1
 RJMP backb
 ;fin
-

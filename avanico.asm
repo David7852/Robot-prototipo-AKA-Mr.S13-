@@ -52,6 +52,7 @@
 .def cub=r30
 .def gir=r31
 
+.equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
 .equ stepb=20;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
 .equ step=13;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
 .equ giro=7;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
@@ -528,11 +529,15 @@ RET
 
 parar:
 MOV r0,aux1
+MOV r12,r23
+ldi r23,stepstop
 LDI aux1,0xf0
 and motores,aux1
 OUT portb,motores
-MOV aux1,r0
-CALL wait20;(usar siempre el menor tiempo de espera)
+ldi r19,0
+CALL waitto;(usar siempre el menor tiempo de espera)
+mov r19,r0
+mov r23,r12
 RET
 
 stopit:
@@ -771,6 +776,7 @@ derechagav:
 cpi aux3,giro
 brlo derechag
 ldi gua,0xff
+call parar
 call returnori
 jmp izqgav
 
@@ -795,6 +801,7 @@ izqgav:
 cpi aux3,giro
 brlo izqg
 ldi gub,0xff
+call parar
 call returnori
 rjmp checkonori
 
@@ -877,7 +884,9 @@ call izquierda
 cpi aux3,giro
 brlo izqff
 call pasoadel
+call parar
 call returnori
+call parar
 ldi aux3,0
 ldi gir,0
 jmp derechagav
@@ -892,7 +901,9 @@ call derecha
 cpi aux3,giro
 brlo derff
 call pasoadel
+call parar
 call returnori
+call parar
 ldi aux3,0
 ldi gir,0
 jmp derechagav

@@ -52,9 +52,10 @@
 .def cub=r30
 .def gir=r31
 
-.equ stepb=20;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ step=13;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ giro=7;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
+.equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ step=16;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ giro=2;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 
 .cseg 
 .include "usb1286def.inc"
@@ -78,14 +79,14 @@ JMP fase1
 ;rutinas para delay de lecturas
 getioafas:
 in ioa,pinc
-nop nop nop
+nop nop nop nop
 in r12,pinc
 CPSE ioa,r12
 RJMP getioa
 RET
 
 getiobfas:
-nop nop nop
+nop nop nop nop
 in r12,pind
 CPSE iob,r12
 RJMP getiob
@@ -93,7 +94,7 @@ RET
 
 getborfas:
 in bordes,pinf
-nop nop nop
+nop nop nop nop
 in r12,pinf
 CPSE bordes,r12
 RJMP getbordes
@@ -193,7 +194,7 @@ RJMP notis
 ;si no hay cambios, aux1 seria igual a 0xff
 getchanga:
 MOV r0,r20
-CALL getioa
+CALL getioafas
 MOV aux2,ioa
 EOR aux2,aux4
 LDI aux1,0
@@ -231,7 +232,7 @@ RET
 getchangb:
 MOV r0,r20
 MOV r1,r21
-CALL getiob
+CALL getiobfas
 MOV aux2,iob
 EOR aux2,aux4
 LDI aux1,0
@@ -533,11 +534,15 @@ RET
 
 parar:
 MOV r0,aux1
+MOV r12,r23
+ldi r23,stepstop
 LDI aux1,0xf0
 and motores,aux1
 OUT portb,motores
-MOV aux1,r0
-CALL wait20;(usar siempre el menor tiempo de espera)
+ldi r19,0
+CALL waitto;(usar siempre el menor tiempo de espera)
+mov r19,r0
+mov r23,r12
 RET
 
 stopit:
@@ -601,16 +606,9 @@ LDI aux1, 0x05
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
-CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+CALL waitTo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 mov r19,r0
 mov r23,r12
-RET
-
-waitdo:
-CALL wait20
-INC r19
-CPSE r19,r23
-RJMP waitdo
 RET
 
 waitto:
@@ -648,6 +646,7 @@ JMP check
 fase3:
 LDI aux5,0
 CALL cuerdaOUT
+call parar
 LDI aux5,0
 CALL RETrieve
 RJMP check

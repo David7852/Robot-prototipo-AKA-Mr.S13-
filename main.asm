@@ -52,9 +52,10 @@
 .def cub=r30
 .def gir=r31
 
-.equ stepb=20;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ step=13;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ giro=7;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
+.equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ step=16;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ giro=2;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 
 .cseg 
 .include "usb1286def.inc"
@@ -78,14 +79,14 @@ JMP fase1
 ;rutinas para delay de lecturas
 getioafas:
 in ioa,pinc
-nop nop nop
+nop nop nop nop
 in r12,pinc
 CPSE ioa,r12
 RJMP getioa
 RET
 
 getiobfas:
-nop nop nop
+nop nop nop nop
 in r12,pind
 CPSE iob,r12
 RJMP getiob
@@ -93,7 +94,7 @@ RET
 
 getborfas:
 in bordes,pinf
-nop nop nop
+nop nop nop nop
 in r12,pinf
 CPSE bordes,r12
 RJMP getbordes
@@ -193,7 +194,7 @@ RJMP notis
 ;si no hay cambios, aux1 seria igual a 0xff
 getchanga:
 MOV r0,r20
-CALL getioa
+CALL getioafas
 MOV aux2,ioa
 EOR aux2,aux4
 LDI aux1,0
@@ -231,7 +232,7 @@ RET
 getchangb:
 MOV r0,r20
 MOV r1,r21
-CALL getiob
+CALL getiobfas
 MOV aux2,iob
 EOR aux2,aux4
 LDI aux1,0
@@ -533,11 +534,15 @@ RET
 
 parar:
 MOV r0,aux1
+MOV r12,r23
+ldi r23,stepstop
 LDI aux1,0xf0
 and motores,aux1
 OUT portb,motores
-MOV aux1,r0
-CALL wait20;(usar siempre el menor tiempo de espera)
+ldi r19,0
+CALL waitto;(usar siempre el menor tiempo de espera)
+mov r19,r0
+mov r23,r12
 RET
 
 stopit:
@@ -586,7 +591,7 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 mov r19,r0
-CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+CALL waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 mov r19,r0
 mov r23,r12
 RET
@@ -601,16 +606,9 @@ LDI aux1, 0x05
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
-CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+CALL waitTo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 mov r19,r0
 mov r23,r12
-RET
-
-waitdo:
-CALL wait20
-INC r19
-CPSE r19,r23
-RJMP waitdo
 RET
 
 waitto:
@@ -648,6 +646,7 @@ JMP check
 fase3:
 LDI aux5,0
 CALL cuerdaOUT
+call parar
 LDI aux5,0
 CALL RETrieve
 RJMP check
@@ -1072,26 +1071,7 @@ CALL atras
 INC aux6
 RJMP cuentback
 
-check:
-CALL parar
-CPI cub,0xff;saltar a cuenta paso
-BREQ stop
-CPI cub,0xee;girar 45 grados izquierda, saltar a cuenta paso
-BREQ stop
-CPI cub,0xdd;girar 45 grados derecha, saltar a cuenta paso
-BREQ stop
-MOV aux4, objn
-CALL getval
-CPI aux1,0
-BREQ stop
-CALL planit
-LDI aux2,1
-CPSE gir,aux2
-CALL derechagir
-LDI aux2,0
-CPSE gir,aux2
-CALL izquiergir
-JMP fase3
+
 
 stop:
 JMP stopit
@@ -1146,6 +1126,28 @@ CPSE gub,aux3
 RJMP girizq
 DEC gua
 RJMP izquiergir
+
+check:
+CALL parar
+CPI cub,0xff;saltar a cuenta paso
+BREQ subindi
+CPI cub,0xee;girar 45 grados izquierda, saltar a cuenta paso
+BREQ subindie
+CPI cub,0xdd;girar 45 grados derecha, saltar a cuenta paso
+BREQ subindid
+MOV aux4, objn
+CALL getval
+CPI aux1,0
+BREQ stop
+CALL planit
+LDI aux2,1
+CPSE gir,aux2
+CALL derechagir
+LDI aux2,0
+CPSE gir,aux2
+CALL izquiergir
+JMP fase3
+
 
 ;********************************************
 
@@ -1209,6 +1211,15 @@ CPI sector,1
 BREQ sets15
 RJMP sets03
 
+;esta rutina es la conexion entre cuerda y cuenta paso.
+SUBIndi: 
+LDI r23,40
+LDI r28,35
+ANDI sector,0x03
+CPI sector,1
+BREQ ssetsecB
+RJMP ssetseca
+
 sets00:
 ldi r22,0
 call getxy
@@ -1253,15 +1264,6 @@ call pasoadel
 ;***
 RJMP deducir
 
-;esta rutina es la conexion entre cuerda y cuenta paso.
-SUBIndi: 
-LDI r23,40
-LDI r28,35
-ANDI sector,0x03
-CPI sector,1
-BREQ ssetsecB
-RJMP ssetseca
-
 SsetsecA:
 mov r22, cua
 subi r22,4
@@ -1300,6 +1302,7 @@ RET
 
 turnleft:
 CALL pasoder
+call parar
 JMP fordward
 
 MOVerleft:
@@ -1312,6 +1315,7 @@ CPI r27,0
 LDI r27,3
 BREQ turnleft
 JMP turnright
+
 
 GOBACK:
 LDI r31,1
@@ -1341,6 +1345,10 @@ MOV r22,r16
 CALL getval
 CPI r19,0
 BREQ GOBACK
+CALL adelante
+CALL adelante
+CALL adelante
+CALL adelante
 CALL adelante
 RJMP deducir
 
@@ -1373,6 +1381,7 @@ RJMP deducir
 
 turnright:
 CALL pasoizq
+call parar
 JMP fordward
 
 MOVerup:
@@ -1394,6 +1403,8 @@ LDI r20,0
 CPSE r19,r20
 JMP RutSel
 JMP GOBACK
+
+
 ;fin rutinas deducir
 
 backA:
