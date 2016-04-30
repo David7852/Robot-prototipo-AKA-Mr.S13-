@@ -268,6 +268,13 @@ LDI r20,0
 INC r19
 RJMP SUBgetxy
 
+;dado el numero de la casilla N suministrada por el aux4, devuelve 0 si no lo esta Y TAL CASILLA NO ES LA DEL OBJETO
+getvalnobj:
+ldi aux1,0
+cpse aux4,objn
+call getval
+ret
+
 ;obtener el valor actual de una casilla N
 ;(la casilla a buscar debe estar guardada en r22, el valor (0,1) es devuelto en aux1)
 getval:

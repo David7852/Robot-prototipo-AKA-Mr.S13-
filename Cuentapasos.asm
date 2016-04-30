@@ -1,33 +1,44 @@
-/*last update oldmain*/
-;r16 = objeto (# casilla)
-;r17 = X objeto
-;r18= Y objeto
-;r19 = aux 1
-;r20 = aux 2
-;r21 = aux 3
-;r22 = N (casilla en busqueda o N de la secuencia)
-;r23 = NDS (Numero de pasos para giro)
-;r24 = sector(00 A 01 B)
-;r25 = X actual
-;r26 = Y actual
-;r27 = sentido (abajo 00, arriba 01, derecha 02, izquierda 03,  con el eje ortocentrico en el sector A borde izquierdo)
-;r28 = numero de pasos para 16cm
-;.......
+;r0 = registro especial (usado por algunas instrucciones de atmel)
+;r1 = registro especial (usado por algunas instrucciones de atmel)
 ;r2 = I/O puerto C (sector A)
 ;r3 = I/O puerto D (sector B)
-;r4 = I/O puerto F (Bordes / )
+;r4 = I/O puerto F (Bordes bit 0= A hORIzontal, bit 1= B hORIzontal, bit 2 = derecha, bit 3 = izquierda )
 ;r5 = I/O puerto B (motores)
-;***  
+;r6 = angulo del vehiculo
+;.......
+;Variables del sistema
+;r16 = objeto (# casilla)
+;r17 = X objeto
+;r18 = Y objeto
+;r19 = aux 1 (RETurn aux)
+;r20 = aux 2
+;r21 = aux 3
+;r22 = aux 4 (N casilla en busqueda o N de la secuencia)
+;r23 = cuerda (DECimas de segundo, o MULtiplicador de DECimas nescesarias para una distancia especifica) 
+;r24 = sectores (primeros 4 bits: 0000 A, 0001 B. ultimos 4 bits: 0000 derecha, 1000 izquierda, 11111111 es unknow)
+;r25 = aux 5
+;r26 = aux 6
+;r27 = gua
+;r28 = gub
+;r29 = cua : guarda valores relacionados a sensores activos, en especifico, el ultimo sensor
+;r30 = cub : guarda la conclusion del recorrido. ff=esta en 90 grados, ee=45 izquieda, dd=45 derecha. cc=avismo.
+;r31 = sentido giro. derecha 0, izquierda 1
+;.......
+;constantes
+;step = numero de veces que debe repetirse un RETardo de X milisegundos para avanzar 8cm (media casilla)
+;giro = numero de veces que debe repetirse un RETardo de X milisegundos para girar 5 grados
+;*** 
 .dseg
 .def ioa=r2
 .def iob=r3
 .def bordes=r4
 .def motores=r5
+.def angle=r6
 
 .def objn=r16
 .def objx=r17
 .def objy=r18
-.def aux1=r19		             
+.def aux1=r19	
 .def aux2=r20
 .def aux3=r21
 .def aux4=r22
@@ -35,21 +46,20 @@
 .def sector=r24
 .def aux5=r25
 .def aux6=r26
-.def aux7=r27
-.def aux8=r28
+.def gua=r27
+.def gub=r28
 .def cua=r29
 .def cub=r30
 .def gir=r31
+
 .equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
+.equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ step=27;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ giro=32;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 
 .cseg 
 .include "usb1286def.inc"
 .org 0000
-
-;lee la posicion de objeto
-;initial setup port
-LDI r23,32
-LDI r28,27
 LDI r19,0xff
 OUT portc,r19
 OUT portd,r19
@@ -60,17 +70,31 @@ OUT portb,r19
 OUT ddrd,r19
 OUT ddrf,r19
 OUT ddrc,r19
-jmp start
-
+JMP start
 ;**********
 
 ;rutinas de asistencia
 ;**********
 
 ;rutinas para delay de lecturas
+getioafas:
+in ioa,pinc
+nop nop nop nop
+in r12,pinc
+CPSE ioa,r12
+RJMP getioa
+RET
+
+getiobfas:
+nop nop nop nop
+in r12,pind
+CPSE iob,r12
+RJMP getiob
+RET
+
 getborfas:
 in bordes,pinf
-NOP 
+nop nop nop nop
 in r12,pinf
 CPSE bordes,r12
 RJMP getbordes
@@ -105,6 +129,11 @@ isrocky:
 MOV r1,aux2
 MOV r13,aux3
 MOV aux1,sector
+call getborfas
+SBRC bordes,2
+rjmp setis
+SBRC bordes,3
+rjmp setis
 ANDI aux1,0x0f
 LDI aux2,0
 CPSE aux1,aux2;si estoy en sector b
@@ -165,7 +194,7 @@ RJMP notis
 ;si no hay cambios, aux1 seria igual a 0xff
 getchanga:
 MOV r0,r20
-CALL getioa
+CALL getioafas
 MOV aux2,ioa
 EOR aux2,aux4
 LDI aux1,0
@@ -203,7 +232,7 @@ RET
 getchangb:
 MOV r0,r20
 MOV r1,r21
-CALL getiob
+CALL getiobfas
 MOV aux2,iob
 EOR aux2,aux4
 LDI aux1,0
@@ -243,6 +272,13 @@ INC r21
 LDI r20,0
 INC r19
 RJMP SUBgetxy
+
+;dado el numero de la casilla N suministrada por el aux4, devuelve 0 si no lo esta Y TAL CASILLA NO ES LA DEL OBJETO
+getvalnobj:
+ldi aux1,0
+cpse aux4,objn
+call getval
+ret
 
 ;obtener el valor actual de una casilla N
 ;(la casilla a buscar debe estar guardada en r22, el valor (0,1) es devuelto en aux1)
@@ -466,8 +502,8 @@ and motores,aux1
 LDI aux1,0x01
 EOR motores,aux1
 OUT portb,motores
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 MOV aux1,r0
+CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 derecha:
@@ -477,8 +513,8 @@ and motores,aux1
 LDI aux1,0x04
 EOR motores,aux1
 OUT portb,motores
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 MOV aux1,r0
+CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 atras:
@@ -488,8 +524,8 @@ and motores,aux1
 LDI aux1,0x0a
 EOR motores,aux1
 OUT portb,motores
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 MOV aux1,r0
+CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 adelante:
@@ -499,8 +535,8 @@ and motores,aux1
 LDI aux1, 0x05
 EOR motores,aux1
 OUT portb,motores
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 MOV aux1,r0
+CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 parar:
@@ -522,6 +558,9 @@ RJMP stopit
 
 ;rutinas de MOVimiento por periodo fijo
 pasoizq:
+mov r0,r19
+mov r12,r23
+ldi r23,giro
 LDI aux1,0xf0
 AND motores,aux1
 LDI aux1,0x01
@@ -529,9 +568,14 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
+mov r23,r12
 RET
 
 pasoder:
+mov r0,r19
+mov r12,r23
+ldi r23,giro
 LDI aux1,0xf0
 AND motores,aux1
 LDI aux1,0x04
@@ -539,33 +583,39 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
+mov r23,r12
 RET
 
 pasoatra:
+mov r0,r19
+mov r12,r23
+ldi r23,stepb
 LDI aux1,0xf0
 and motores,aux1
 LDI aux1,0x0a
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
-CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
+CALL waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
+mov r23,r12
 RET
 
 pasoadel:
+mov r0,r19
+mov r12,r23
+ldi r23,step
 LDI aux1,0xf0
 and motores,aux1
 LDI aux1, 0x05
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
-CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
-RET
-
-waitdo:
-CALL wait20
-INC r19
-CPSE r19,r28
-RJMP waitdo
+CALL waitTo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+mov r19,r0
+mov r23,r12
 RET
 
 waitto:
@@ -575,9 +625,61 @@ CPSE r19,r23
 RJMP waitto
 RET
 
-;*********
-;fin
+waituntil:
+mov r20,r25
+mov r21,r26
+call getnxy
+call getvalnobj
+cpi aux1,1
+breq waituntil
+ret
 
+;requiere los registros r19,r20,r21,r22
+pasoadelchecking:
+ldi r23,step
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x05
+eor motores,aux1
+out portb,motores
+
+pasoadelcheck:
+ldi aux1,0
+cpse aux1,r23
+rjmp pasoadelcp
+call parar
+ret
+
+pasoadelcp:
+call wait10
+mov r20,r25
+mov r21,r26
+call getnxy
+call getvalnobj;contiene el delay de 02
+dec r23
+cpi aux1,0
+breq pasoadelcheck
+call waituntil
+rjmp pasoadelcheck
+;*********
+
+;****
+;inicio
+;****
+
+;r16 = objeto (# casilla)
+;r17 = X objeto
+;r18= Y objeto
+;r19 = aux 1
+;r20 = aux 2
+;r21 = aux 3
+;r22 = N (casilla en busqueda o N de la secuencia)
+;r23 = NDS (Numero de pasos para giro)
+;r24 = sector(00 A 01 B)
+;r25 = X actual
+;r26 = Y actual
+;r27 = sentido (abajo 00, arriba 01, derecha 02, izquierda 03,  con el eje ortocentrico en el sector A borde izquierdo)
+;r28-19 = aux
 
 
 start:;end of initial setup
@@ -807,13 +909,9 @@ RJMP MOVeright
 RETre:
 RET
 
-turnleft:
-CALL pasoder
-call parar
-JMP fordward
-
 MOVerleft:
 DEC r25
+call waituntil
 CPI r27,2
 BREQ reverse
 CPI r27,3
@@ -823,14 +921,9 @@ LDI r27,3
 BREQ turnleft
 JMP turnright
 
-GOBACK:
-LDI r31,1
-CPSE r24,r31
-JMP backA
-JMP backB
-
 MOVeright:
 INC r25
+call waituntil
 CPI r27,2
 BREQ fordward
 CPI r27,3
@@ -838,7 +931,11 @@ BREQ reverse
 CPI r27,0
 LDI r27,2
 BREQ turnright
-JMP turnleft
+
+turnleft:
+CALL pasoder
+call parar
+JMP fordward
 
 RutSel:
 CP r18,r26
@@ -858,16 +955,11 @@ CALL adelante
 CALL adelante
 RJMP deducir
 
-MOVerdown:
-DEC r26
-CPI r27,0
-BREQ reverse
-CPI r27,1
-BREQ fordward
-CPI r27,2
-LDI r27,1
-BREQ turnleft
-JMP turnright
+GOBACK:
+LDI r31,1
+CPSE r24,r31
+JMP backA
+JMP backB
 
 reverse:
 CALL pasoatra
@@ -878,20 +970,33 @@ BREQ GOBACK
 RJMP deducir
 
 fordward:
-CALL pasoadel
 MOV r22,r16
 CALL getval
 CPI r19,0
 BREQ GOBACK
+CALL pasoadelchecking
 RJMP deducir
+
+MOVerdown:
+DEC r26
+call waituntil
+CPI r27,0
+BREQ reverse
+CPI r27,1
+BREQ fordward
+CPI r27,2
+LDI r27,1
+BREQ turnleft
 
 turnright:
 CALL pasoizq
 call parar
 JMP fordward
 
+
 MOVerup:
 INC r26
+call waituntil
 CPI r27,0
 BREQ fordward
 CPI r27,1
@@ -911,7 +1016,6 @@ JMP RutSel
 JMP GOBACK
 
 ;fin rutinas deducir
-
 backA:
 CALL getbordes
 MOV r31,r4
