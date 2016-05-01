@@ -54,8 +54,8 @@
 
 .equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
 .equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ step=27;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ giro=32;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ step=21;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ giro=14;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 
 .cseg 
 .include "usb1286def.inc"
@@ -70,7 +70,16 @@ OUT portb,r19
 OUT ddrd,r19
 OUT ddrf,r19
 OUT ddrc,r19
-JMP start
+call pasoadel
+call parar
+call pasoizq
+call parar
+call pasoder
+call parar
+call pasoder
+call parar
+call pasoizq
+call stopit
 ;**********
 
 ;rutinas de asistencia
@@ -563,7 +572,7 @@ mov r12,r23
 ldi r23,giro
 LDI aux1,0xf0
 AND motores,aux1
-LDI aux1,0x01
+LDI aux1,0x09
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
@@ -576,9 +585,10 @@ pasoder:
 mov r0,r19
 mov r12,r23
 ldi r23,giro
+dec r23
 LDI aux1,0xf0
 AND motores,aux1
-LDI aux1,0x04
+LDI aux1,0x06
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
@@ -665,389 +675,3 @@ breq pasoadelcheck
 ;****
 ;inicio
 ;****
-
-;r16 = objeto (# casilla)
-;r17 = X objeto
-;r18= Y objeto
-;r19 = aux 1
-;r20 = aux 2
-;r21 = aux 3
-;r22 = N (casilla en busqueda o N de la secuencia)
-;r23 = NDS (Numero de pasos para giro)
-;r24 = sector(00 A 01 B)
-;r25 = X actual
-;r26 = Y actual
-;r27 = sentido (abajo 00, arriba 01, derecha 02, izquierda 03,  con el eje ortocentrico en el sector A borde izquierdo)
-;r28-19 = aux
-
-
-start:;end of initial setup
-CALL getioa
-CALL getiob
-LDI r19,0
-CP r2,r19
-BRNE starta
-CPSE r3,r19
-JMP startb
-RJMP start
-
-startA:;setea la posicion del objeto si esta en sector A
-SBRC r2,0
-RJMP ssetstartA
-INC r19
-SBRC r2,1
-RJMP ssetstartA
-INC r19
-SBRC r2,2
-RJMP ssetstartA
-INC r19
-SBRC r2,3
-RJMP ssetstartA
-INC r19
-SBRC r2,4
-RJMP ssetstartA
-INC r19
-SBRC r2,5
-RJMP ssetstartA
-INC r19
-SBRC r2,6
-RJMP ssetstartA
-INC r19
-RJMP ssetstartA
-
-startB:;setea la posicion del objeto si esta en sector B
-SBRC r3,0
-RJMP ssetstartB
-INC r19
-SBRC r3,1
-RJMP ssetstartB
-INC r19
-SBRC r3,2
-RJMP ssetstartB
-INC r19
-SBRC r3,3
-RJMP ssetstartB
-INC r19
-SBRC r3,4
-RJMP ssetstartB
-INC r19
-SBRC r3,5
-RJMP ssetstartB
-INC r19
-SBRC r3,6
-RJMP ssetstartB
-INC r19
-RJMP ssetstartB
-
-ssetstartA:
-MOV r16,r19
-MOV r22,r16
-CALL getxy
-MOV r17,r20
-MOV r18,r21
-RJMP stindi;rutina de solucion de sector
-
-ssetstartB:
-LDI r20,8
-ADD r19,r20
-MOV r16,r19
-MOV r22,r16
-CALL getxy
-MOV r17,r20
-MOV r18,r21
-RJMP stindi
-;fin de rutinas de deteccion de objeto
-
-;mueve hacia adelante hasta que se encienda un borde
-stindi:
-CALL adelante
-CALL getbordes
-MOV aux4,r4
-ANDI aux4,0x03
-CPI aux4,0
-BREQ stindi
-;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
-CPI aux4,2
-BREQ SsetsecB
-RJMP Ssetseca
-
-SsetsecA:
-LDI r24,0
-LDI r27,0
-RJMP stindia
-
-SsetsecB:
-LDI r24,1
-LDI r27,1
-RJMP stindib
-
-;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
-stindiAA:
-CP r22,objn
-BREQ RETge
-CALL getxy
-MOV r25,r20
-MOV r26,r21
-POP r0
-POP r0
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-JMP deducir
-
-retge:
-ret
-
-stindiBB:
-LDI r20,8
-ADD r20,r22
-CP r20,objn
-BREQ RETge
-MOV r22,r20
-CALL getxy
-MOV r25,r20
-MOV r26,r21
-POP r0
-POP r0
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-JMP deducir
-;MOVer hasta encender una casilla dentro del tablero en mi sector
-
-stindiA:
-CALL adelante
-CALL getioa
-MOV r25,r2
-CPI r25,0
-BREQ stindiA
-LDI r22,0
-SBRC r25,0
-CALL stindiAA
-INC r22
-SBRC r25,1
-CALL stindiAA
-INC r22
-SBRC r25,2
-CALL stindiAA
-INC r22
-SBRC r25,3
-CALL stindiAA
-INC r22
-SBRC r25,4
-CALL stindiAA
-INC r22
-SBRC r25,5
-CALL stindiAA
-INC r22
-SBRC r25,6
-CALL stindiAA
-INC r22
-SBRC r25,7
-CALL stindiAA
-RJMP stindia
-
-stindiB:
-CALL adelante
-CALL getiob
-MOV r30,r3
-CPI r30,0
-BREQ stindiB
-LDI r22,0
-SBRC r30,0
-CALL stindibb
-INC r22
-SBRC r30,1
-CALL stindibb
-INC r22
-SBRC r30,2
-CALL stindibb
-INC r22
-SBRC r30,3
-CALL stindibb
-INC r22
-SBRC r30,4
-CALL stindibb
-INC r22
-SBRC r30,5
-CALL stindibb
-INC r22
-SBRC r30,6
-CALL stindibb
-INC r22
-SBRC r30,7
-CALL stindibb
-RJMP stindib
-
-MOVerright:
-BREQ RETre
-RJMP MOVeright
-
-RETre:
-RET
-
-MOVerleft:
-DEC r25
-call waituntil
-CPI r27,2
-BREQ reverse
-CPI r27,3
-BREQ fordward
-CPI r27,0
-LDI r27,3
-BREQ turnleft
-JMP turnright
-
-MOVeright:
-INC r25
-call waituntil
-CPI r27,2
-BREQ fordward
-CPI r27,3
-BREQ reverse
-CPI r27,0
-LDI r27,2
-BREQ turnright
-
-turnleft:
-CALL pasoder
-call parar
-JMP fordward
-
-RutSel:
-CP r18,r26
-BRLO MOVerdown
-BRNE MOVerup
-CP r17,r25
-BRLO MOVerleft
-CALL MOVerright
-MOV r22,r16
-CALL getval
-CPI r19,0
-BREQ GOBACK
-CALL adelante
-CALL adelante
-CALL adelante
-CALL adelante
-CALL adelante
-RJMP deducir
-
-GOBACK:
-LDI r31,1
-CPSE r24,r31
-JMP backA
-JMP backB
-
-reverse:
-CALL pasoatra
-MOV r22,r16
-CALL getval
-CPI r19,0
-BREQ GOBACK
-RJMP deducir
-
-fordward:
-MOV r22,r16
-CALL getval
-CPI r19,0
-BREQ GOBACK
-CALL pasoadelchecking
-RJMP deducir
-
-MOVerdown:
-DEC r26
-call waituntil
-CPI r27,0
-BREQ reverse
-CPI r27,1
-BREQ fordward
-CPI r27,2
-LDI r27,1
-BREQ turnleft
-
-turnright:
-CALL pasoizq
-call parar
-JMP fordward
-
-
-MOVerup:
-INC r26
-call waituntil
-CPI r27,0
-BREQ fordward
-CPI r27,1
-BREQ reverse
-CPI r27,2
-LDI r27,0
-BREQ turnright
-JMP turnleft
-
-deducir:
-CALL parar
-MOV r22,r16
-CALL getval
-LDI r20,0
-CPSE r19,r20
-JMP RutSel
-JMP GOBACK
-
-;fin rutinas deducir
-backA:
-CALL getbordes
-MOV r31,r4
-SBRC r31,0
-JMP stopit
-SBRS r27,1
-CALL atras
-SBRS r27,1
-RJMP backa
-LDI r30,2
-LDI r29,3
-CPSE r27,r30
-CALL pasoizq
-CPSE r27,r29
-CALL pasoder
-LDI r27,0
-RJMP backa
-
-backB:
-CALL getbordes
-MOV r31,r4
-SBRC r31,1
-JMP stopit
-SBRS r27,1
-CALL atras
-SBRS r27,1
-RJMP backb
-LDI r30,2
-LDI r29,3
-CPSE r27,r30
-CALL pasoder
-CPSE r27,r29
-CALL pasoizq
-LDI r27,1
-RJMP backb
-;fin

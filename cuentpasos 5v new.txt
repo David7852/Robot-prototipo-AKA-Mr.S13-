@@ -659,7 +659,8 @@ call getvalnobj;contiene el delay de 02
 dec r23
 cpi aux1,0
 breq pasoadelcheck
-
+call waituntil
+rjmp pasoadelcheck
 ;*********
 
 ;****
