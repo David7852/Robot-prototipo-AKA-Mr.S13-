@@ -38,7 +38,7 @@
 .def objn=r16
 .def objx=r17
 .def objy=r18
-.def aux1=r19		             
+.def aux1=r19	
 .def aux2=r20
 .def aux3=r21
 .def aux4=r22
@@ -52,10 +52,10 @@
 .def cub=r30
 .def gir=r31
 
-.equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
-.equ stepb=20;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ step=10;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ giro=32;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ stepstop=30;delay necesario para drenar el desplazamiento de los motores.
+.equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ step=4;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ giro=15;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 
 .cseg 
 .include "usb1286def.inc"
@@ -70,7 +70,7 @@ OUT portb,r19
 OUT ddrd,r19
 OUT ddrf,r19
 OUT ddrc,r19
-JMP fase0
+jmp fase0
 ;**********
 
 ;rutinas de asistencia
@@ -79,14 +79,14 @@ JMP fase0
 ;rutinas para delay de lecturas
 getioafas:
 in ioa,pinc
-nop nop nop
+nop nop nop 
 in r12,pinc
 CPSE ioa,r12
 RJMP getioa
 RET
 
 getiobfas:
-nop nop nop
+nop nop nop 
 in r12,pind
 CPSE iob,r12
 RJMP getiob
@@ -94,7 +94,7 @@ RET
 
 getborfas:
 in bordes,pinf
-nop nop nop
+nop nop nop 
 in r12,pinf
 CPSE bordes,r12
 RJMP getbordes
@@ -129,6 +129,11 @@ isrocky:
 MOV r1,aux2
 MOV r13,aux3
 MOV aux1,sector
+call getborfas
+SBRC bordes,2
+rjmp setis
+SBRC bordes,3
+rjmp setis
 ANDI aux1,0x0f
 LDI aux2,0
 CPSE aux1,aux2;si estoy en sector b
@@ -284,7 +289,7 @@ BRSH getvalB
 RJMP getvalA
 
 getvalB:
-CALL getiobfas
+CALL getiob
 LDI r20,8
 LDI r19,0
 SBRC r3,0
@@ -336,7 +341,7 @@ MOV r20,r0
 RET
 
 getvalA:
-CALL getioafas
+CALL getioa
 LDI r20,0
 LDI r19,0
 SBRC r2,0
@@ -435,6 +440,29 @@ NOP
 NOP 
 BREQ wait20A
 RJMP wait20B
+
+;18ms (7*0.0000005)(256)(26)=0.022seg
+wait18:
+MOV r8,r20
+MOV r11,r21
+LDI r20,24
+RJMP wait18A
+
+wait18A:
+LDI r21,0xff
+SUBI r20,1
+BRNE wait18B
+MOV r20,r8
+MOV r21,r11
+RET
+
+wait18B:
+SUBI r21,1
+NOP 
+NOP 
+NOP 
+BREQ wait18A
+RJMP wait18B
  
 ;30 (9*0.0000005)(256)(26)=0.029seg
 wait30:
@@ -494,7 +522,7 @@ izquierda:
 MOV r0,aux1
 LDI aux1,0xf0
 and motores,aux1
-LDI aux1,0x01
+LDI aux1,0x09
 EOR motores,aux1
 OUT portb,motores
 MOV aux1,r0
@@ -505,11 +533,11 @@ derecha:
 MOV r0,aux1
 LDI aux1,0xf0
 and motores,aux1
-LDI aux1,0x04
+LDI aux1,0x06
 EOR motores,aux1
 OUT portb,motores
 MOV aux1,r0
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+CALL wait18;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 atras:
@@ -551,6 +579,10 @@ stopit:
 CALL parar
 RJMP stopit
 
+stopitaux:
+CALL atras
+RJMP stopitaux
+
 ;rutinas de MOVimiento por periodo fijo
 pasoizq:
 mov r0,r19
@@ -558,7 +590,7 @@ mov r12,r23
 ldi r23,giro
 LDI aux1,0xf0
 AND motores,aux1
-LDI aux1,0x01
+LDI aux1,0x09
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
@@ -571,9 +603,10 @@ pasoder:
 mov r0,r19
 mov r12,r23
 ldi r23,giro
+dec r23
 LDI aux1,0xf0
 AND motores,aux1
-LDI aux1,0x04
+LDI aux1,0x06
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
@@ -593,7 +626,7 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 mov r19,r0
-CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+CALL waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 mov r19,r0
 mov r23,r12
 RET
@@ -608,16 +641,9 @@ LDI aux1, 0x05
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
-CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+CALL waitTo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 mov r19,r0
 mov r23,r12
-RET
-
-waitdo:
-CALL wait20
-INC r19
-CPSE r19,r23
-RJMP waitdo
 RET
 
 waitto:
@@ -627,8 +653,46 @@ CPSE r19,r23
 RJMP waitto
 RET
 
+waituntil:
+mov r20,r25
+mov r21,r26
+call getnxy
+call getvalnobj
+cpi aux1,1
+breq waituntil
+ret
+
+;requiere los registros r19,r20,r21,r22
+pasoadelchecking:
+ldi r23,step
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x05
+eor motores,aux1
+out portb,motores
+
+pasoadelcheck:
+ldi aux1,0
+cpse aux1,r23
+rjmp pasoadelcp
+call parar
+ret
+
+pasoadelcp:
+call wait10
+mov r20,r25
+mov r21,r26
+call getnxy
+call getvalnobj;contiene el delay de 02
+dec r23
+cpi aux1,0
+breq pasoadelcheck
+
 ;*********
-;fin
+
+;****
+;inicio
+;****
 
 fase0:
 CALL seto
@@ -802,6 +866,7 @@ breq derechagav
 componD:
 mov cua,aux1
 mov gua,aux3
+call parar
 call returnori
 
 izqgav:
@@ -827,14 +892,17 @@ breq izqgav
 componI:
 mov cua,aux1
 mov gub,aux3
+call parar
 call returnori
 
 checkonori:
+ldi aux2,0xff
 cpse gua,gub
 rjmp nonequal
-cpi gua,0xff
-breq fase1;aca es porque aun no llega al acance de algun sensor
+nop
+cpse gua,aux2
 jmp stopit;*aca es porque esta en linea recta entre dos sensores*
+jmp fase1;aca es porque aun no llega al acance de algun sensor o esta en linea con un sensor
 
 nonequal:
 ;***si un sensor en mi sector esta encendio, este es mi inicio y estoy en linea recta hacia el.
@@ -844,10 +912,9 @@ SBRS sector,0
 call getchanga
 ldi aux2,0xff
 CPSE aux1,aux2
-mov cua,aux1
-CPSE aux1,aux2
 jmp stopit;*aca es porque esta en linea recta entre dos sensores*
 ;***
+mov cua,aux1
 cpi gua,0xff
 breq guaff
 cpi gub,0xff
@@ -856,16 +923,26 @@ cp gua,gub
 brlo guamin
 
 gubmin:
+call parar
+ldi aux2,giro
 mov cub,gua
+sub aux2,cub
+mov cub,aux2
 sub cub,gub
+add cub,cub
 ldi aux2,0
-jmp derecub
+rjmp derecub
 
 guamin:
+call parar
+ldi aux2,giro
 mov cub,gub
+sub aux2,cub
+mov cub,aux2
 sub cub,gua
+add cub,cub
 ldi aux2,0
-jmp izqcub
+rjmp izqcub
 
 derecub:
 call derecha
@@ -881,7 +958,7 @@ cpse cub,aux2
 rjmp izqcub
 jmp stopit
 
-gubff:
+guaff:
 ldi aux3,0
 ldi gir,1
 
@@ -893,12 +970,11 @@ brlo izqff
 call pasoadel
 call parar
 call returnori
-call parar
 ldi aux3,0
 ldi gir,0
 jmp derechagav
 
-guaff:
+gubff:
 ldi aux3,0
 ldi gir,0
 
@@ -910,7 +986,6 @@ brlo derff
 call pasoadel
 call parar
 call returnori
-call parar
 ldi aux3,0
 ldi gir,0
 jmp derechagav

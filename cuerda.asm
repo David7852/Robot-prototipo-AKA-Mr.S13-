@@ -38,7 +38,7 @@
 .def objn=r16
 .def objx=r17
 .def objy=r18
-.def aux1=r19		             
+.def aux1=r19	
 .def aux2=r20
 .def aux3=r21
 .def aux4=r22
@@ -53,9 +53,14 @@
 .def gir=r31
 
 .equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
+
 .equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ step=16;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ giro=2;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ step=21;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ giro=14;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+
+.equ backcuerda=15
+.equ stepcuerda=10
+.equ girocuerda=2
 
 .cseg 
 .include "usb1286def.inc"
@@ -70,9 +75,9 @@ OUT portb,r19
 OUT ddrd,r19
 OUT ddrf,r19
 OUT ddrc,r19
-JMP fase1
-;**********
+jmp fase1
 
+;**********
 ;rutinas de asistencia
 ;**********
 
@@ -499,7 +504,7 @@ izquierda:
 MOV r0,aux1
 LDI aux1,0xf0
 and motores,aux1
-LDI aux1,0x01
+LDI aux1,0x09
 EOR motores,aux1
 OUT portb,motores
 MOV aux1,r0
@@ -510,7 +515,7 @@ derecha:
 MOV r0,aux1
 LDI aux1,0xf0
 and motores,aux1
-LDI aux1,0x04
+LDI aux1,0x06
 EOR motores,aux1
 OUT portb,motores
 MOV aux1,r0
@@ -563,7 +568,7 @@ mov r12,r23
 ldi r23,giro
 LDI aux1,0xf0
 AND motores,aux1
-LDI aux1,0x01
+LDI aux1,0x09
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
@@ -576,9 +581,10 @@ pasoder:
 mov r0,r19
 mov r12,r23
 ldi r23,giro
+dec r23
 LDI aux1,0xf0
 AND motores,aux1
-LDI aux1,0x04
+LDI aux1,0x06
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
@@ -598,7 +604,7 @@ EOR motores,aux1
 OUT portb,motores
 LDI r19,0
 mov r19,r0
-CALL waitdo;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+CALL waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 mov r19,r0
 mov r23,r12
 RET
@@ -624,11 +630,48 @@ INC r19
 CPSE r19,r23
 RJMP waitto
 RET
+
+waituntil:
+mov r20,r25
+mov r21,r26
+call getnxy
+call getvalnobj
+cpi aux1,1
+breq waituntil
+ret
+
+;requiere los registros r19,r20,r21,r22
+pasoadelchecking:
+ldi r23,step
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x05
+eor motores,aux1
+out portb,motores
+
+pasoadelcheck:
+ldi aux1,0
+cpse aux1,r23
+rjmp pasoadelcp
+call parar
+ret
+
+pasoadelcp:
+call wait10
+mov r20,r25
+mov r21,r26
+call getnxy
+call getvalnobj;contiene el delay de 02
+dec r23
+cpi aux1,0
+breq pasoadelcheck
+
 ;*********
 
 ;****
 ;inicio
 ;****
+
 Fase1:
 CALL seto
 CALL esperanto
@@ -638,7 +681,7 @@ RJMP fase2
 ;****
 
 Fase2:
-LDI aux5,step
+LDI aux5,stepcuerda
 add aux5,aux5
 add aux5,aux5
 CALL flare
@@ -795,7 +838,7 @@ CPSE aux5,aux2
 rjmp keeplaunching
 call extingue
 call derecha
-ldi aux5,step
+ldi aux5,stepcuerda
 add aux5,aux5
 add aux5,aux5
 
@@ -1020,7 +1063,7 @@ RETurn:
 RET
 
 cuentpaso:
-CPI aux6,step
+CPI aux6,stepcuerda
 BREQ cuerdaOUT
 CALL adelante
 ;aux1 es resultado de getchang
@@ -1037,13 +1080,13 @@ LDI aux2,0xff
 CPSE aux1,aux2
 MOV cua,aux1
 ;*** comprueba que no se golpearan rocas o avismos
-MOV aux4,aux1
-CALL isrocky
-CPI aux1,0xff
-BREQ rockshock
-CALL isfall
-CPI aux1,0xff
-BREQ fallfall
+;MOV aux4,aux1
+;CALL isrocky
+;CPI aux1,0xff
+;BREQ rockshock
+;CALL isfall
+;CPI aux1,0xff
+;BREQ fallfall
 INC aux6
 RJMP cuentpaso
 
@@ -1072,7 +1115,7 @@ INC aux5
 RJMP cuentback
 
 cuentback:
-CPI aux6,stepb
+CPI aux6,backcuerda
 BREQ RETrieve
 CALL atras
 INC aux6
@@ -1129,7 +1172,7 @@ RET
 
 girder:
 INC gub
-LDI aux3,giro
+LDI aux3,girocuerda
 CPSE gub,aux3
 CALL derecha
 CPSE gub,aux3
@@ -1145,7 +1188,7 @@ RET
 
 girizq:
 INC gub
-LDI aux3,giro
+LDI aux3,girocuerda
 CPSE gub,aux3
 CALL izquierda
 CPSE gub,aux3

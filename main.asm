@@ -38,7 +38,7 @@
 .def objn=r16
 .def objx=r17
 .def objy=r18
-.def aux1=r19		             
+.def aux1=r19	
 .def aux2=r20
 .def aux3=r21
 .def aux4=r22
@@ -53,9 +53,14 @@
 .def gir=r31
 
 .equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
-.equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ step=16;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ giro=2;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+
+.equ stepb=20;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ step=20
+.equ giro=14
+
+.equ backcuerda=10
+.equ stepcuerda=10;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ girocuerda=3;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 
 .cseg 
 .include "usb1286def.inc"
@@ -70,9 +75,9 @@ OUT portb,r19
 OUT ddrd,r19
 OUT ddrf,r19
 OUT ddrc,r19
-JMP fase1
-;**********
+jmp fase1
 
+;**********
 ;rutinas de asistencia
 ;**********
 
@@ -499,7 +504,7 @@ izquierda:
 MOV r0,aux1
 LDI aux1,0xf0
 and motores,aux1
-LDI aux1,0x01
+LDI aux1,0x09
 EOR motores,aux1
 OUT portb,motores
 MOV aux1,r0
@@ -510,7 +515,7 @@ derecha:
 MOV r0,aux1
 LDI aux1,0xf0
 and motores,aux1
-LDI aux1,0x04
+LDI aux1,0x06
 EOR motores,aux1
 OUT portb,motores
 MOV aux1,r0
@@ -563,7 +568,7 @@ mov r12,r23
 ldi r23,giro
 LDI aux1,0xf0
 AND motores,aux1
-LDI aux1,0x01
+LDI aux1,0x09
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
@@ -576,9 +581,10 @@ pasoder:
 mov r0,r19
 mov r12,r23
 ldi r23,giro
+dec r23
 LDI aux1,0xf0
 AND motores,aux1
-LDI aux1,0x04
+LDI aux1,0x06
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
@@ -624,11 +630,48 @@ INC r19
 CPSE r19,r23
 RJMP waitto
 RET
+
+waituntil:
+mov r20,r25
+mov r21,r26
+call getnxy
+call getvalnobj
+cpi aux1,1
+breq waituntil
+ret
+
+;requiere los registros r19,r20,r21,r22
+pasoadelchecking:
+ldi r23,step
+ldi aux1,0xf0
+and motores,aux1
+ldi aux1,0x05
+eor motores,aux1
+out portb,motores
+
+pasoadelcheck:
+ldi aux1,0
+cpse aux1,r23
+rjmp pasoadelcp
+call parar
+ret
+
+pasoadelcp:
+call wait10
+mov r20,r25
+mov r21,r26
+call getnxy
+call getvalnobj;contiene el delay de 02
+dec r23
+cpi aux1,0
+breq pasoadelcheck
+
 ;*********
 
 ;****
 ;inicio
 ;****
+
 Fase1:
 CALL seto
 CALL esperanto
@@ -638,7 +681,7 @@ RJMP fase2
 ;****
 
 Fase2:
-LDI aux5,step
+LDI aux5,stepcuerda
 add aux5,aux5
 add aux5,aux5
 CALL flare
@@ -790,17 +833,6 @@ CALL sunless
 RJMP launch
 
 launch: ;MOVer hasta que se encienda un borde vertical o se encienda un sensor
-ldi aux2,0
-CPSE aux5,aux2
-rjmp keeplaunching
-call extingue
-call derecha
-ldi aux5,step
-add aux5,aux5
-add aux5,aux5
-
-keeplaunching:
-DEC aux5
 CALL adelante
 LDI aux2,1 ;si estoy en b
 CPSE sector,aux2
@@ -938,22 +970,7 @@ RJMP compox
 RET
     
 calcuerda:;si a cuerda=objy*2-1 
-MOV aux1,sector
-MOV aux3,objy
-INC aux3
-LDI aux4,5
-SUB aux4,aux3
-ADD aux4,aux4
-DEC aux4
-ADD aux3,aux3
-DEC aux3
-ANDI aux1,0x0f
-LDI aux2,0
-CPSE aux1,aux2;si estoy en sector b
-MOV cuerda, aux4
-LDI aux2,1
-CPSE aux1,aux2;si estoy en sector a
-MOV cuerda,aux3
+ldi cuerda,4
 RET
 
 ;esto agrega mas de 10 ms al paso de ORIginalmente 22, asi que step deberia dividirse 1.5 de su cantidad ORIginal.
@@ -1020,7 +1037,7 @@ RETurn:
 RET
 
 cuentpaso:
-CPI aux6,step
+CPI aux6,stepcuerda
 BREQ cuerdaOUT
 CALL adelante
 ;aux1 es resultado de getchang
@@ -1037,13 +1054,13 @@ LDI aux2,0xff
 CPSE aux1,aux2
 MOV cua,aux1
 ;*** comprueba que no se golpearan rocas o avismos
-MOV aux4,aux1
-CALL isrocky
-CPI aux1,0xff
-BREQ rockshock
-CALL isfall
-CPI aux1,0xff
-BREQ fallfall
+;MOV aux4,aux1
+;CALL isrocky
+;CPI aux1,0xff
+;BREQ rockshock
+;CALL isfall
+;CPI aux1,0xff
+;BREQ fallfall
 INC aux6
 RJMP cuentpaso
 
@@ -1072,13 +1089,11 @@ INC aux5
 RJMP cuentback
 
 cuentback:
-CPI aux6,stepb
+CPI aux6,backcuerda
 BREQ RETrieve
 CALL atras
 INC aux6
 RJMP cuentback
-
-
 
 stop:
 JMP stopit
@@ -1110,7 +1125,7 @@ RET
 
 girder:
 INC gub
-LDI aux3,giro
+LDI aux3,girocuerda
 CPSE gub,aux3
 CALL derecha
 CPSE gub,aux3
@@ -1126,7 +1141,7 @@ RET
 
 girizq:
 INC gub
-LDI aux3,giro
+LDI aux3,girocuerda
 CPSE gub,aux3
 CALL izquierda
 CPSE gub,aux3
@@ -1154,7 +1169,6 @@ LDI aux2,0
 CPSE gir,aux2
 CALL izquiergir
 JMP fase3
-
 
 ;********************************************
 
@@ -1184,7 +1198,7 @@ AND motores,aux1
 LDI aux1,0x04
 EOR motores,aux1
 OUT portb,motores
-LDI r19,20
+LDI r19,6
 CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
@@ -1194,13 +1208,13 @@ AND motores,aux1
 LDI aux1,0x01
 EOR motores,aux1
 OUT portb,motores
-LDI r19,20
+LDI r19,6
 CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 SUBIndie:
-LDI r23,40
-LDI r28,35
+LDI r23,14
+LDI r28,20
 CALL  izq45
 ANDI sector,0x03
 CPI sector,1
@@ -1210,8 +1224,8 @@ RJMP sets00
 ;en caso de que al desviar 45 grados se quede en medio de un sector, usar cua +-5 o +-3 para obtener la casilla de inicio?? si no, ir a rutinca cuenta filas (por crear)
     
 SUBIndid:
-LDI r23,40
-LDI r28,35
+LDI r23,14
+LDI r28,20
 CALL  der45
 ANDI sector,0x03
 CPI sector,1
@@ -1220,11 +1234,11 @@ RJMP sets03
 
 ;esta rutina es la conexion entre cuerda y cuenta paso.
 SUBIndi: 
-LDI r23,40
-LDI r28,35
+LDI r23,14
+LDI r28,20
 ANDI sector,0x03
 CPI sector,1
-BREQ ssetsecB
+BREQ ssetsecb
 RJMP ssetseca
 
 sets00:
@@ -1277,9 +1291,6 @@ subi r22,4
 call getxy
 mov r25,r20
 mov r26,r21
-;*** mover un paso puesto que se empieza desde el borde, no desde el sector
-call pasoadel
-;***
 LDI r24,0
 LDI r27,0
 rjmp deducir
@@ -1293,9 +1304,6 @@ inc r22
 call getxy
 mov r25,r20
 mov r26,r21
-;*** mover un paso puesto que se empieza desde el borde, no desde el sector
-call pasoadel
-;***
 LDI r24,1
 LDI r27,1
 RJMP deducir
@@ -1307,13 +1315,9 @@ RJMP MOVeright
 RETre:
 RET
 
-turnleft:
-CALL pasoder
-call parar
-JMP fordward
-
 MOVerleft:
 DEC r25
+call waituntil
 CPI r27,2
 BREQ reverse
 CPI r27,3
@@ -1323,15 +1327,9 @@ LDI r27,3
 BREQ turnleft
 JMP turnright
 
-
-GOBACK:
-LDI r31,1
-CPSE r24,r31
-JMP backA
-JMP backB
-
 MOVeright:
 INC r25
+call waituntil
 CPI r27,2
 BREQ fordward
 CPI r27,3
@@ -1339,7 +1337,11 @@ BREQ reverse
 CPI r27,0
 LDI r27,2
 BREQ turnright
-JMP turnleft
+
+turnleft:
+CALL pasoder
+call parar
+JMP fordward
 
 RutSel:
 CP r18,r26
@@ -1359,16 +1361,11 @@ CALL adelante
 CALL adelante
 RJMP deducir
 
-MOVerdown:
-DEC r26
-CPI r27,0
-BREQ reverse
-CPI r27,1
-BREQ fordward
-CPI r27,2
-LDI r27,1
-BREQ turnleft
-JMP turnright
+GOBACK:
+LDI r31,1
+CPSE r24,r31
+JMP backA
+JMP backB
 
 reverse:
 CALL pasoatra
@@ -1379,12 +1376,23 @@ BREQ GOBACK
 RJMP deducir
 
 fordward:
-CALL pasoadel
 MOV r22,r16
 CALL getval
 CPI r19,0
 BREQ GOBACK
+CALL pasoadelchecking
 RJMP deducir
+
+MOVerdown:
+DEC r26
+call waituntil
+CPI r27,0
+BREQ reverse
+CPI r27,1
+BREQ fordward
+CPI r27,2
+LDI r27,1
+BREQ turnleft
 
 turnright:
 CALL pasoizq
@@ -1393,6 +1401,7 @@ JMP fordward
 
 MOVerup:
 INC r26
+call waituntil
 CPI r27,0
 BREQ fordward
 CPI r27,1
@@ -1411,9 +1420,7 @@ CPSE r19,r20
 JMP RutSel
 JMP GOBACK
 
-
 ;fin rutinas deducir
-
 backA:
 CALL getbordes
 MOV r31,r4

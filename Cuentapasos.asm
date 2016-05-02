@@ -53,9 +53,14 @@
 .def gir=r31
 
 .equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
+
 .equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ step=27;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ giro=32;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ step=21;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ giro=14;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+
+.equ backcuerda=15
+.equ stepcuerda=10
+.equ girocuerda=2
 
 .cseg 
 .include "usb1286def.inc"
@@ -70,9 +75,9 @@ OUT portb,r19
 OUT ddrd,r19
 OUT ddrf,r19
 OUT ddrc,r19
-JMP start
-;**********
+jmp start
 
+;**********
 ;rutinas de asistencia
 ;**********
 
@@ -499,7 +504,7 @@ izquierda:
 MOV r0,aux1
 LDI aux1,0xf0
 and motores,aux1
-LDI aux1,0x01
+LDI aux1,0x09
 EOR motores,aux1
 OUT portb,motores
 MOV aux1,r0
@@ -510,7 +515,7 @@ derecha:
 MOV r0,aux1
 LDI aux1,0xf0
 and motores,aux1
-LDI aux1,0x04
+LDI aux1,0x06
 EOR motores,aux1
 OUT portb,motores
 MOV aux1,r0
@@ -563,7 +568,7 @@ mov r12,r23
 ldi r23,giro
 LDI aux1,0xf0
 AND motores,aux1
-LDI aux1,0x01
+LDI aux1,0x09
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
@@ -576,9 +581,10 @@ pasoder:
 mov r0,r19
 mov r12,r23
 ldi r23,giro
+dec r23
 LDI aux1,0xf0
 AND motores,aux1
-LDI aux1,0x04
+LDI aux1,0x06
 EOR motores,aux1
 OUT portb,motores
 LDI r19,0
