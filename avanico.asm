@@ -56,6 +56,7 @@
 .equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
 .equ step=4;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
 .equ giro=15;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ mediogiro=7
 
 .cseg 
 .include "usb1286def.inc"
@@ -699,8 +700,6 @@ CALL seto
 CALL esperanto
 ldi aux5,0
 ldi cua,0xff
-ldi gua,0xff
-ldi gub,0xff
 ldi aux4,0
 JMP fase1
 
@@ -864,6 +863,7 @@ cpi aux1,0xff
 breq derechagav
 
 componD:
+dec aux3
 mov cua,aux1
 mov gua,aux3
 call parar
@@ -890,6 +890,7 @@ cpi aux1,0xff
 breq izqgav
 
 componI:
+dec aux3
 mov cua,aux1
 mov gub,aux3
 call parar
@@ -901,7 +902,7 @@ cpse gua,gub
 rjmp nonequal
 nop
 cpse gua,aux2
-jmp stopit;*aca es porque esta en linea recta entre dos sensores*
+jmp stopit;*aca es porque esta en linea recta entre dos sensores ya que la unica forma en que dos sensores allan sido iguales pero no ff es porque se cumple que hay aproximadamente 45 grados entre lado y lado.
 jmp fase1;aca es porque aun no llega al acance de algun sensor o esta en linea con un sensor
 
 nonequal:
@@ -912,9 +913,9 @@ SBRS sector,0
 call getchanga
 ldi aux2,0xff
 CPSE aux1,aux2
-jmp stopit;*aca es porque esta en linea recta entre dos sensores*
-;***
-mov cua,aux1
+;***aca no necesariamente voy a estar de frente o entre dos, por lo que deberia crear una rutina para ello.
+jmp stopit
+;***aca es porque esta en linea recta entre dos sensores*
 cpi gua,0xff
 breq guaff
 cpi gub,0xff
@@ -929,7 +930,6 @@ mov cub,gua
 sub aux2,cub
 mov cub,aux2
 sub cub,gub
-add cub,cub
 ldi aux2,0
 rjmp derecub
 
@@ -940,7 +940,6 @@ mov cub,gub
 sub aux2,cub
 mov cub,aux2
 sub cub,gua
-add cub,cub
 ldi aux2,0
 rjmp izqcub
 
@@ -959,33 +958,26 @@ rjmp izqcub
 jmp stopit
 
 guaff:
+call parar
 ldi aux3,0
-ldi gir,1
+ldi cub,mediogiro
+add cub,gub
 
 izqff:
 inc aux3
 call izquierda
-cpi aux3,giro
-brlo izqff
-call pasoadel
-call parar
-call returnori
-ldi aux3,0
-ldi gir,0
-jmp derechagav
+cp aux3,cub
+jmp stopit
 
 gubff:
+call parar
 ldi aux3,0
-ldi gir,0
+ldi cub,mediogiro
+add cub,gua
 
 derff:
 inc aux3
 call derecha
-cpi aux3,giro
+cp aux3,cub
 brlo derff
-call pasoadel
-call parar
-call returnori
-ldi aux3,0
-ldi gir,0
-jmp derechagav
+jmp stopit

@@ -52,15 +52,11 @@
 .def cub=r30
 .def gir=r31
 
-.equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
-
+.equ stepstop=30;delay necesario para drenar el desplazamiento de los motores.
 .equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ step=21;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ giro=14;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
-
-.equ backcuerda=15
-.equ stepcuerda=10
-.equ girocuerda=2
+.equ step=6;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ giro=30;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ mediogiro=15
 
 .cseg 
 .include "usb1286def.inc"
@@ -75,16 +71,16 @@ OUT portb,r19
 OUT ddrd,r19
 OUT ddrf,r19
 OUT ddrc,r19
-jmp start
-
+jmp fase0
 ;**********
+
 ;rutinas de asistencia
 ;**********
 
 ;rutinas para delay de lecturas
 getioafas:
 in ioa,pinc
-nop nop nop nop
+nop nop nop 
 in r12,pinc
 CPSE ioa,r12
 RJMP getioa
@@ -92,7 +88,7 @@ RET
 
 getiobfas:
 in iob,pind
-nop nop nop nop
+nop nop nop 
 in r12,pind
 CPSE iob,r12
 RJMP getiob
@@ -100,7 +96,7 @@ RET
 
 getborfas:
 in bordes,pinf
-nop nop nop nop
+nop nop nop 
 in r12,pinf
 CPSE bordes,r12
 RJMP getbordes
@@ -405,10 +401,31 @@ RET
 
 ;Rutinas para generar RETardos a (20 mhz)
 ;10ms (7*0.0000005)(256)(26)=0.013seg
+wait0:
+MOV r8,r20
+MOV r11,r21
+LDI r20,22
+RJMP wait10A
+
+wait0A:
+LDI r21,0xff
+SUBI r20,1
+BRNE wait10B
+MOV r20,r8
+MOV r21,r11
+RET
+
+wait0B:
+SUBI r21,1
+BREQ wait10A
+RJMP wait10B
+
+;Rutinas para generar RETardos a (20 mhz)
+;10ms (4*0.0000005)(256)(26)=0.013seg
 wait10:
 MOV r8,r20
 MOV r11,r21
-LDI r20,26
+LDI r20,23
 RJMP wait10A
 
 wait10A:
@@ -423,6 +440,29 @@ wait10B:
 SUBI r21,1
 BREQ wait10A
 RJMP wait10B
+
+;19ms (7*0.0000005)(256)(24)=0.022seg
+wait19:
+MOV r8,r20
+MOV r11,r21
+LDI r20,22
+RJMP wait19A
+
+wait19A:
+LDI r21,0xff
+SUBI r20,1
+BRNE wait19B
+MOV r20,r8
+MOV r21,r11
+RET
+
+wait19B:
+SUBI r21,1
+NOP 
+NOP 
+NOP 
+BREQ wait19A
+RJMP wait19B
 
 ;20ms (7*0.0000005)(256)(26)=0.022seg
 wait20:
@@ -509,7 +549,7 @@ LDI aux1,0x09
 EOR motores,aux1
 OUT portb,motores
 MOV aux1,r0
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+CALL wait10;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 derecha:
@@ -520,7 +560,7 @@ LDI aux1,0x06
 EOR motores,aux1
 OUT portb,motores
 MOV aux1,r0
-CALL wait20;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+CALL wait0;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
 RET
 
 atras:
@@ -561,6 +601,10 @@ RET
 stopit:
 CALL parar
 RJMP stopit
+
+stopitaux:
+CALL atras
+RJMP stopitaux
 
 ;rutinas de MOVimiento por periodo fijo
 pasoizq:
@@ -673,88 +717,80 @@ breq pasoadelcheck
 ;inicio
 ;****
 
-;r16 = objeto (# casilla)
-;r17 = X objeto
-;r18= Y objeto
-;r19 = aux 1
-;r20 = aux 2
-;r21 = aux 3
-;r22 = N (casilla en busqueda o N de la secuencia)
-;r23 = NDS (Numero de pasos para giro)
-;r24 = sector(00 A 01 B)
-;r25 = X actual
-;r26 = Y actual
-;r27 = sentido (abajo 00, arriba 01, derecha 02, izquierda 03,  con el eje ortocentrico en el sector A borde izquierdo)
-;r28-19 = aux
+fase0:
+CALL seto
+CALL esperanto
+ldi aux5,0
+ldi cua,0xff
+ldi aux4,0
+JMP fase1
 
-
-start:;end of initial setup
+seto:;(esperar a que objeto este puesto)
 CALL getioa
 CALL getiob
-LDI r19,0
 CP r2,r19
-BRNE starta
+BRNE startA
 CPSE r3,r19
-JMP startb
-RJMP start
+RJMP startB
+RJMP seto
 
-startA:;setea la posicion del objeto si esta en sector A
+startA:;setea la posicion del objeto (si esta en sector A)
 SBRC r2,0
-RJMP ssetstartA
+RJMP setstartA
 INC r19
 SBRC r2,1
-RJMP ssetstartA
+RJMP setstartA
 INC r19
 SBRC r2,2
-RJMP ssetstartA
+RJMP setstartA
 INC r19
 SBRC r2,3
-RJMP ssetstartA
+RJMP setstartA
 INC r19
 SBRC r2,4
-RJMP ssetstartA
+RJMP setstartA
 INC r19
 SBRC r2,5
-RJMP ssetstartA
+RJMP setstartA
 INC r19
 SBRC r2,6
-RJMP ssetstartA
+RJMP setstartA
 INC r19
-RJMP ssetstartA
+RJMP setstartA
 
-startB:;setea la posicion del objeto si esta en sector B
+startB:;setea la posicion del objeto (si esta en sector B)
 SBRC r3,0
-RJMP ssetstartB
+RJMP setstartB
 INC r19
 SBRC r3,1
-RJMP ssetstartB
+RJMP setstartB
 INC r19
 SBRC r3,2
-RJMP ssetstartB
+RJMP setstartB
 INC r19
 SBRC r3,3
-RJMP ssetstartB
+RJMP setstartB
 INC r19
 SBRC r3,4
-RJMP ssetstartB
+RJMP setstartB
 INC r19
 SBRC r3,5
-RJMP ssetstartB
+RJMP setstartB
 INC r19
 SBRC r3,6
-RJMP ssetstartB
+RJMP setstartB
 INC r19
-RJMP ssetstartB
+RJMP setstartB
 
-ssetstartA:
+setstartA:
 MOV r16,r19
 MOV r22,r16
 CALL getxy
 MOV r17,r20
 MOV r18,r21
-RJMP stindi;rutina de solucion de sector
+RET
 
-ssetstartB:
+setstartB:
 LDI r20,8
 ADD r19,r20
 MOV r16,r19
@@ -762,299 +798,209 @@ MOV r22,r16
 CALL getxy
 MOV r17,r20
 MOV r18,r21
-RJMP stindi
-;fin de rutinas de deteccion de objeto
-
-;mueve hacia adelante hasta que se encienda un borde
-stindi:
-CALL adelante
-CALL getbordes
-MOV aux4,r4
-ANDI aux4,0x03
-CPI aux4,0
-BREQ stindi
-;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
-CPI aux4,2
-BREQ SsetsecB
-RJMP Ssetseca
-
-SsetsecA:
-LDI r24,0
-LDI r27,0
-RJMP stindia
-
-SsetsecB:
-LDI r24,1
-LDI r27,1
-RJMP stindib
-
-;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
-stindiAA:
-CP r22,objn
-BREQ RETge
-CALL getxy
-MOV r25,r20
-MOV r26,r21
-POP r0
-POP r0
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-JMP deducir
-
-retge:
-ret
-
-stindiBB:
-LDI r20,8
-ADD r20,r22
-CP r20,objn
-BREQ RETge
-MOV r22,r20
-CALL getxy
-MOV r25,r20
-MOV r26,r21
-POP r0
-POP r0
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-JMP deducir
-;MOVer hasta encender una casilla dentro del tablero en mi sector
-
-stindiA:
-CALL adelante
-CALL getioa
-MOV r25,r2
-CPI r25,0
-BREQ stindiA
-LDI r22,0
-SBRC r25,0
-CALL stindiAA
-INC r22
-SBRC r25,1
-CALL stindiAA
-INC r22
-SBRC r25,2
-CALL stindiAA
-INC r22
-SBRC r25,3
-CALL stindiAA
-INC r22
-SBRC r25,4
-CALL stindiAA
-INC r22
-SBRC r25,5
-CALL stindiAA
-INC r22
-SBRC r25,6
-CALL stindiAA
-INC r22
-SBRC r25,7
-CALL stindiAA
-RJMP stindia
-
-stindiB:
-CALL adelante
-CALL getiob
-MOV r30,r3
-CPI r30,0
-BREQ stindiB
-LDI r22,0
-SBRC r30,0
-CALL stindibb
-INC r22
-SBRC r30,1
-CALL stindibb
-INC r22
-SBRC r30,2
-CALL stindibb
-INC r22
-SBRC r30,3
-CALL stindibb
-INC r22
-SBRC r30,4
-CALL stindibb
-INC r22
-SBRC r30,5
-CALL stindibb
-INC r22
-SBRC r30,6
-CALL stindibb
-INC r22
-SBRC r30,7
-CALL stindibb
-RJMP stindib
-
-MOVerright:
-BREQ RETre
-RJMP MOVeright
-
-RETre:
 RET
 
-MOVerleft:
-DEC r25
-call waituntil
-CPI r27,2
-BREQ reverse
-CPI r27,3
-BREQ fordward
-CPI r27,0
-LDI r27,3
-BREQ turnleft
-JMP turnright
+;rutina de espera.(RETrasa el carro 5.6 seg, 7,4 seg, 9,9 seg respectivamente)
+;cada 22 o 29 o 39 milisegundos se va a revisar si algun borde se encendio
+esperanto:
+LDI r19,0xff
+RJMP wait
 
-MOVeright:
-INC r25
-call waituntil
-CPI r27,2
-BREQ fordward
-CPI r27,3
-BREQ reverse
-CPI r27,0
-LDI r27,2
-BREQ turnright
-
-turnleft:
-CALL pasoder
-call parar
-JMP fordward
-
-RutSel:
-CP r18,r26
-BRLO MOVerdown
-BRNE MOVerup
-CP r17,r25
-BRLO MOVerleft
-CALL MOVerright
-MOV r22,r16
-CALL getval
+wait:
+CALL wait20;cambiar aca cual se quiere si 20,30 o 40
+DEC r19
+CALL getborfas
+;com r4 ;suponiendo que las entradas de los bordes sean logica baja al igual que los sensores
+SBRC r4,0 ;si el pin 0 NO es 0, salta, si lo es continua
+RJMP setsecb
+SBRC r4,1 ;si el pin 1 NO es 0, salta, si lo es continua
+RJMP setseca
 CPI r19,0
-BREQ GOBACK
+BREQ resolution
+RJMP wait
+
+setsecA:
+LDI r24,0
+RET
+
+setsecB:
+LDI r24,1
+RET
+
+;fin de rutina de espera
+resolution:;(en caso de que algun otro carro TAMBIEN (maLDItos) este esperando o nosotros estemos solos)
 CALL adelante
-CALL adelante
-CALL adelante
-CALL adelante
-CALL adelante
-RJMP deducir
-
-GOBACK:
-LDI r31,1
-CPSE r24,r31
-JMP backA
-JMP backB
-
-reverse:
-CALL pasoatra
-MOV r22,r16
-CALL getval
-CPI r19,0
-BREQ GOBACK
-RJMP deducir
-
-fordward:
-MOV r22,r16
-CALL getval
-CPI r19,0
-BREQ GOBACK
-CALL pasoadelchecking
-RJMP deducir
-
-MOVerdown:
-DEC r26
-call waituntil
-CPI r27,0
-BREQ reverse
-CPI r27,1
-BREQ fordward
-CPI r27,2
-LDI r27,1
-BREQ turnleft
-
-turnright:
-CALL pasoizq
-call parar
-JMP fordward
-
-
-MOVerup:
-INC r26
-call waituntil
-CPI r27,0
-BREQ fordward
-CPI r27,1
-BREQ reverse
-CPI r27,2
-LDI r27,0
-BREQ turnright
-JMP turnleft
-
-deducir:
-CALL parar
-MOV r22,r16
-CALL getval
-LDI r20,0
-CPSE r19,r20
-JMP RutSel
-JMP GOBACK
-
-;fin rutinas deducir
-backA:
 CALL getbordes
-MOV r31,r4
-SBRC r31,0
-JMP stopit
-SBRS r27,1
-CALL atras
-SBRS r27,1
-RJMP backa
-LDI r30,2
-LDI r29,3
-CPSE r27,r30
-CALL pasoizq
-CPSE r27,r29
-CALL pasoder
-LDI r27,0
-RJMP backa
+LDI aux1,0x03
+and bordes,aux1
+LDI aux1,0
+CP bordes,aux1
+BREQ resolution
+LDI aux1,1
+CP bordes, aux1
+BREQ setsecA
+RJMP setsecB
 
-backB:
-CALL getbordes
-MOV r31,r4
-SBRC r31,1
-JMP stopit
-SBRS r27,1
-CALL atras
-SBRS r27,1
-RJMP backb
-LDI r30,2
-LDI r29,3
-CPSE r27,r30
-CALL pasoder
-CPSE r27,r29
-CALL pasoizq
-LDI r27,1
-RJMP backb
-;fin
+returnori: ;restar aux3 hasta hacerlo cero
+ldi aux2,0
+cpse aux3,aux2
+rjmp toori
+call parar
+com gir
+andi gir,0x01
+ret
+
+toori:
+dec aux3
+cpse gir,aux2
+call derecha
+ldi aux2, 1
+cpse gir,aux2
+call izquierda
+rjmp returnori
+
+fase1:
+call pasoadel
+ldi aux3,0
+ldi gir,0
+call parar
+
+derechagav:
+cpi aux3,giro
+brlo derechag
+ldi gua,0xff
+call parar
+call returnori
+jmp izqgav
+
+derechag:
+ldi aux2,0
+cpse sector,aux2;si b
+call getchangb;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+ldi aux2,1
+cpse sector,aux2;si a
+call getchanga ;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+inc aux3
+call derecha
+cpi aux1,0xff
+breq derechagav
+
+componD:
+dec aux3
+mov cua,aux1
+mov gua,aux3
+call parar
+call returnori
+
+izqgav:
+cpi aux3,giro
+brlo izqg
+ldi gub,0xff
+call parar
+call returnori
+rjmp checkonori
+
+izqg:
+ldi aux2,0
+cpse sector,aux2;si b
+call getchangb;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+ldi aux2,1
+cpse sector,aux2;si a
+call getchanga ;****getchanga y getchangb deben ser cambiados para esta rutina, a su version fast****
+inc aux3
+call izquierda
+cpi aux1,0xff
+breq izqgav
+
+componI:
+dec aux3
+mov cua,aux1
+mov gub,aux3
+call parar
+call returnori
+
+checkonori:
+ldi aux2,0xff
+cpse gua,gub
+rjmp nonequal
+nop
+cpse gua,aux2
+jmp stopit;*aca es porque esta en linea recta entre dos sensores ya que la unica forma en que dos sensores allan sido iguales pero no ff es porque se cumple que hay aproximadamente 45 grados entre lado y lado.
+jmp fase1;aca es porque aun no llega al acance de algun sensor o esta en linea con un sensor
+
+nonequal:
+;***si un sensor en mi sector esta encendio, este es mi inicio y estoy en linea recta hacia el.
+SBRC sector,0
+call getchangb
+SBRS sector,0
+call getchanga
+ldi aux2,0xff
+CPSE aux1,aux2
+;***aca no necesariamente voy a estar de frente o entre dos, por lo que deberia crear una rutina para ello.
+jmp stopit
+;***aca es porque esta en linea recta entre dos sensores*
+cpi gua,0xff
+breq guaff
+cpi gub,0xff
+breq gubff
+cp gua,gub
+brlo guamin
+
+gubmin:
+call parar
+ldi aux2,giro
+mov cub,gua
+sub aux2,cub
+mov cub,aux2
+sub cub,gub
+ldi aux2,0
+rjmp derecub
+
+guamin:
+call parar
+ldi aux2,giro
+mov cub,gub
+sub aux2,cub
+mov cub,aux2
+sub cub,gua
+ldi aux2,0
+rjmp izqcub
+
+derecub:
+call derecha
+dec cub
+cpse cub,aux2
+rjmp derecub
+jmp stopit
+
+izqcub:
+call izquierda
+dec cub
+cpse cub,aux2
+rjmp izqcub
+jmp stopit
+
+guaff:
+call parar
+ldi aux3,0
+ldi cub,mediogiro
+add cub,gub
+
+izqff:
+inc aux3
+call izquierda
+cp aux3,cub
+jmp stopit
+
+gubff:
+call parar
+ldi aux3,0
+ldi cub,mediogiro
+add cub,gua
+
+derff:
+inc aux3
+call derecha
+cp aux3,cub
+brlo derff
+jmp stopit

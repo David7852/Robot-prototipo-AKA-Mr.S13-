@@ -54,13 +54,14 @@
 
 .equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
 
-.equ stepb=17;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ step=21;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
-.equ giro=14;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ stepb=20;un pasob es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un retroceso igual a 5,8 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ step=20
+.equ giro=14
+.equ mediogiro=7
 
-.equ backcuerda=15
-.equ stepcuerda=10
-.equ girocuerda=2
+.equ backcuerda=10
+.equ stepcuerda=10;un paso es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un avance igual a 10 cm ( 23,52cm es la maxima inclinacion posible, a 45 grados, es la medida del sector*1.437 16*1.437. esto entre dos =11.76)
+.equ girocuerda=3;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 
 .cseg 
 .include "usb1286def.inc"
@@ -75,7 +76,7 @@ OUT portb,r19
 OUT ddrd,r19
 OUT ddrf,r19
 OUT ddrc,r19
-jmp start
+jmp fase1
 
 ;**********
 ;rutinas de asistencia
@@ -91,7 +92,6 @@ RJMP getioa
 RET
 
 getiobfas:
-in iob,pind
 nop nop nop nop
 in r12,pind
 CPSE iob,r12
@@ -673,6 +673,512 @@ breq pasoadelcheck
 ;inicio
 ;****
 
+Fase1:
+CALL seto
+CALL esperanto
+RJMP fase2
+;****
+;acondicionamiento
+;****
+
+Fase2:
+LDI aux5,stepcuerda
+add aux5,aux5
+add aux5,aux5
+CALL flare
+CALL calcuerda
+CALL plan
+LDI cua,0
+JMP check
+;****
+;toma de DECisiones
+;****
+
+fase3:
+LDI aux5,0
+CALL cuerdaOUT
+call parar
+LDI aux5,0
+CALL RETrieve
+RJMP check
+;****
+
+seto:;(esperar a que objeto este puesto)
+CALL getioa
+CALL getiob
+CP r2,r19
+BRNE startA
+CPSE r3,r19
+RJMP startB
+RJMP seto
+
+startA:;setea la posicion del objeto (si esta en sector A)
+SBRC r2,0
+RJMP setstartA
+INC r19
+SBRC r2,1
+RJMP setstartA
+INC r19
+SBRC r2,2
+RJMP setstartA
+INC r19
+SBRC r2,3
+RJMP setstartA
+INC r19
+SBRC r2,4
+RJMP setstartA
+INC r19
+SBRC r2,5
+RJMP setstartA
+INC r19
+SBRC r2,6
+RJMP setstartA
+INC r19
+RJMP setstartA
+
+startB:;setea la posicion del objeto (si esta en sector B)
+SBRC r3,0
+RJMP setstartB
+INC r19
+SBRC r3,1
+RJMP setstartB
+INC r19
+SBRC r3,2
+RJMP setstartB
+INC r19
+SBRC r3,3
+RJMP setstartB
+INC r19
+SBRC r3,4
+RJMP setstartB
+INC r19
+SBRC r3,5
+RJMP setstartB
+INC r19
+SBRC r3,6
+RJMP setstartB
+INC r19
+RJMP setstartB
+
+setstartA:
+MOV r16,r19
+MOV r22,r16
+CALL getxy
+MOV r17,r20
+MOV r18,r21
+RET
+
+setstartB:
+LDI r20,8
+ADD r19,r20
+MOV r16,r19
+MOV r22,r16
+CALL getxy
+MOV r17,r20
+MOV r18,r21
+RET
+
+;rutina de espera.(RETrasa el carro 5.6 seg, 7,4 seg, 9,9 seg respectivamente)
+;cada 22 o 29 o 39 milisegundos se va a revisar si algun borde se encendio
+esperanto:
+LDI r19,0xff
+RJMP wait
+
+wait:
+CALL wait20;cambiar aca cual se quiere si 20,30 o 40
+DEC r19
+CALL getborfas
+SBRC r4,0 ;si el pin 0 NO es 0, salta, si lo es continua
+RJMP setsecb
+SBRC r4,1 ;si el pin 1 NO es 0, salta, si lo es continua
+RJMP setseca
+CPI r19,0
+BREQ resolution
+RJMP wait
+
+setsecA:
+LDI r24,0
+RET
+
+setsecB:
+LDI r24,1
+RET
+
+;fin de rutina de espera
+resolution:;(en caso de que algun otro carro TAMBIEN (maLDItos) este esperando o nosotros estemos solos)
+LDI sector,0xff
+RET;(en caso de estar solos en la pista, simplemente sale y comienza a explorar)
+;****
+
+sunless:
+CALL adelante
+CALL getbordes
+LDI aux1,0x03
+and bordes,aux1
+LDI aux1,0
+CP bordes,aux1
+BREQ sunless
+LDI aux1,1
+CP bordes, aux1
+BREQ setsecA
+RJMP setsecB 
+RET
+
+flare:
+CALL getioa
+CALL getiob
+LDI aux1,0xff
+CPSE sector,aux1
+RJMP launch
+CALL sunless
+RJMP launch
+
+launch: ;MOVer hasta que se encienda un borde vertical o se encienda un sensor
+CALL adelante
+LDI aux2,1 ;si estoy en b
+CPSE sector,aux2
+MOV aux4,ioa
+CPSE sector,aux2
+;comprobar si algun sensor encendio en mi sector (solo revisa mi sector ya que asi evito falsos positivos con el rival)
+CALL getchanga
+LDI aux2,0
+CPSE sector,aux2
+MOV aux4,iob
+CPSE sector,aux2
+CALL getchangb
+LDI aux2,0xff
+CPSE aux1,aux2
+RJMP exting
+;comprobar bordes... si empece en a, compiar el contenido del registro de bordes, negar el bit 0, comprobar si el registro es distinto de 0. si empece en b, compiar el contenido del registro de bordes, negar el bit 1, comprobar si el registro es distinto de 0. si el registro no es 0, ir a extingub 
+CALL getbordes
+MOV aux3,bordes
+LDI aux2,0;si estoy en a
+CP sector,aux2
+BREQ bordea
+RJMP bordeb
+
+bordea:
+LDI cua,0xff
+SBRC aux3,3
+ANDI sector,0x0f;mirando derecha
+SBRC aux3,3
+RJMP setder
+SBRC aux3,3
+RJMP extingue
+SBRC aux3,2
+ORI sector,0x80;mirando izquierda
+SBRC aux3,2
+RJMP setizq
+SBRC aux3,2
+RJMP extingue
+RJMP launch
+
+bordeb:
+LDI cua,0xff
+SBRC aux3,3
+ORI sector,0x80;mirando derecha
+SBRC aux3,3
+RJMP setder
+SBRC aux3,3
+RJMP extingue
+SBRC aux3,2
+ANDI sector,0x0f;mirando izquierda
+SBRC aux3,2
+RJMP setizq
+SBRC aux3,2
+RJMP extingue
+RJMP launch
+
+setder:
+call parar
+LDI gir,0
+RJMP extingue
+
+setizq:
+call parar
+LDI gir,1
+RJMP extingue
+
+exting:
+MOV cua,aux1
+LDI aux2,0;si estoy en a
+CP sector,aux2
+BREQ extinga
+LDI aux2,1
+CP sector,aux2;si estoy en b
+BREQ extingb
+
+extinga:
+MOV aux4,aux1
+CALL getxy
+CP objx,aux2
+BRGE setizq
+RJMP setder
+
+extingb:
+MOV aux4,aux1
+CALL getxy
+CP objx,aux2
+BRGE setder
+RJMP setizq
+
+extingue:
+CALL atras
+CALL getbordes
+MOV aux3,bordes
+MOV aux1,sector
+ANDI aux1,0x03
+SBRC aux1,0
+RJMP extb
+SBRS aux1,0
+RJMP exta
+
+extb:
+SBRC aux3,1
+RET
+RJMP extingue
+
+exta:
+SBRC aux3,0
+RET
+RJMP extingue
+
+compxo:
+SUB aux2,objx
+MOV gua,aux2
+;INC gua ??
+RET
+    
+compox:
+MOV gua,objx
+SUB gua,aux2
+;INC gua ??
+RET
+    
+plan:
+LDI aux2,0xff
+CPSE cua,aux2
+RJMP pla
+RET
+    
+pla:
+MOV aux4,cua
+CALL getxy
+CP objx,aux2
+BRLO compxo
+CPSE objx,aux2
+RJMP compox
+RET
+    
+calcuerda:;si a cuerda=objy*2-1 
+ldi cuerda,4
+RET
+
+;esto agrega mas de 10 ms al paso de ORIginalmente 22, asi que step deberia dividirse 1.5 de su cantidad ORIginal.
+;mover adelante por cuerda
+cuerdaOUT:
+LDI aux6,0
+CP aux5,cuerda
+BREQ RETurn
+INC aux5
+;***
+LDI aux4,0
+LDI aux1,0
+;***
+RJMP cuentpaso
+
+setff:
+LDI cub,0xff
+INC aux6
+RJMP cuentpaso
+
+check90:
+;si cua es igual a aux1+4 o aux1-4, cub igual ff
+LDI aux2,4
+ADD aux1,aux2
+CP cua,aux1
+BREQ setff
+SUBI aux1,8
+CP cua,aux1
+BREQ setff
+ADD aux1,aux2
+RET
+
+setee:
+LDI cub,0xee
+INC aux6
+RJMP cuentpaso
+
+setdd:
+LDI cub,0xdd
+INC aux6
+RJMP cuentpaso
+
+check45:
+;si cua es igual a aux1+4 o aux1-4, cub igual ff
+LDI aux2,3
+ADD aux1,aux2
+CP cua,aux1
+BREQ setdd
+SUBI aux1,6
+CP cua,aux1
+BREQ setdd
+ADD aux1,aux2
+LDI aux2,5
+ADD aux1,aux2
+CP cua,aux1
+BREQ setee
+SUBI aux1,10
+CP cua,aux1
+BREQ setee
+ADD aux1,aux2
+RET
+
+RETurn:
+RET
+
+cuentpaso:
+CPI aux6,stepcuerda
+BREQ cuerdaOUT
+CALL adelante
+;aux1 es resultado de getchang
+SBRC sector,0
+CALL getchangb
+SBRS sector,0
+CALL getchanga
+;*** revisa si en mi sector tengo una convinacion con desviacion conocida.
+CALL check90
+CALL check45
+;***
+;si aux1 es distinto de  ff, guardar en cua aux1
+LDI aux2,0xff
+CPSE aux1,aux2
+MOV cua,aux1
+;*** comprueba que no se golpearan rocas o avismos
+;MOV aux4,aux1
+;CALL isrocky
+;CPI aux1,0xff
+;BREQ rockshock
+;CALL isfall
+;CPI aux1,0xff
+;BREQ fallfall
+INC aux6
+RJMP cuentpaso
+
+rockshock: ;ir atras hasta que se encida mi borde, saltar a fase3.
+CALL parar
+POP r0
+POP r0
+MOV aux1,sector
+CALL extingue
+RJMP check
+
+fallfall: ;ir atras hasta que se encienda borde, invertir giro, saltar a fase3.
+CALL parar
+POP r0
+POP r0
+COM gir
+ANDI gir,0x01
+CALL extingue
+RJMP check
+
+RETrieve:
+LDI aux6,0
+CP aux5,cuerda
+BREQ RETurn
+INC aux5
+RJMP cuentback
+
+cuentback:
+CPI aux6,backcuerda
+BREQ RETrieve
+CALL atras
+INC aux6
+RJMP cuentback
+
+stop:
+JMP stopit
+
+planit:;calcula cuanto girar, si 5,10,15,etc, guardando el numero de veces que girar 5 grados en el gua.
+;queda por hacer un forMULa que de un numero al que ir restando 1 en uno y que tome como valor la posicion inicial y el obejto
+;planit nunca devolvera nada menor a 1
+LDI gub,1
+CPSE gua,gub
+RJMP planb
+RET
+
+planb:
+LDI gub,0
+CPSE gua,gub
+RJMP plana
+LDI gua,1
+RET
+
+plana:
+DEC gua
+RET
+
+derechagir:
+LDI gub,0
+CPSE gua,gub
+RJMP girder
+RET
+
+girder:
+INC gub
+LDI aux3,girocuerda
+CPSE gub,aux3
+CALL derecha
+CPSE gub,aux3
+RJMP girder
+DEC gua
+RJMP derechagir
+
+izquiergir:
+LDI gub,0
+CPSE gua,gub
+RJMP girizq
+RET
+
+girizq:
+INC gub
+LDI aux3,girocuerda
+CPSE gub,aux3
+CALL izquierda
+CPSE gub,aux3
+RJMP girizq
+DEC gua
+RJMP izquiergir
+
+check:
+CALL parar
+CPI cub,0xff;saltar a cuenta paso
+BREQ subindi
+CPI cub,0xee;girar 45 grados izquierda, saltar a cuenta paso
+BREQ subindie
+CPI cub,0xdd;girar 45 grados derecha, saltar a cuenta paso
+BREQ subindid
+MOV aux4, objn
+CALL getval
+CPI aux1,0
+BREQ stop
+CALL planit
+LDI aux2,1
+CPSE gir,aux2
+CALL derechagir
+LDI aux2,0
+CPSE gir,aux2
+CALL izquiergir
+JMP fase3
+
+;********************************************
+
+
+;**** mean while, in a parallel universe ****
+
+
+;********************************************
+
 ;r16 = objeto (# casilla)
 ;r17 = X objeto
 ;r18= Y objeto
@@ -687,226 +1193,125 @@ breq pasoadelcheck
 ;r27 = sentido (abajo 00, arriba 01, derecha 02, izquierda 03,  con el eje ortocentrico en el sector A borde izquierdo)
 ;r28-19 = aux
 
+der45:
+LDI aux1,0xf0
+AND motores,aux1
+LDI aux1,0x06
+EOR motores,aux1
+OUT portb,motores
+LDI r19,mediogiro
+CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+RET
 
-start:;end of initial setup
-CALL getioa
-CALL getiob
-LDI r19,0
-CP r2,r19
-BRNE starta
-CPSE r3,r19
-JMP startb
-RJMP start
+izq45:
+LDI aux1,0xf0
+AND motores,aux1
+LDI aux1,0x09
+EOR motores,aux1
+OUT portb,motores
+LDI r19,mediogiro
+CALL  waitto;(si se requiere un ajuste mas fino, usar 20ms, si 30 no alcanza usar 40ms)
+RET
 
-startA:;setea la posicion del objeto si esta en sector A
-SBRC r2,0
-RJMP ssetstartA
-INC r19
-SBRC r2,1
-RJMP ssetstartA
-INC r19
-SBRC r2,2
-RJMP ssetstartA
-INC r19
-SBRC r2,3
-RJMP ssetstartA
-INC r19
-SBRC r2,4
-RJMP ssetstartA
-INC r19
-SBRC r2,5
-RJMP ssetstartA
-INC r19
-SBRC r2,6
-RJMP ssetstartA
-INC r19
-RJMP ssetstartA
+SUBIndie:
+LDI r23,14
+LDI r28,20
+CALL  izq45
+ANDI sector,0x03
+CPI sector,1
+BREQ sets12
+RJMP sets00
 
-startB:;setea la posicion del objeto si esta en sector B
-SBRC r3,0
-RJMP ssetstartB
-INC r19
-SBRC r3,1
-RJMP ssetstartB
-INC r19
-SBRC r3,2
-RJMP ssetstartB
-INC r19
-SBRC r3,3
-RJMP ssetstartB
-INC r19
-SBRC r3,4
-RJMP ssetstartB
-INC r19
-SBRC r3,5
-RJMP ssetstartB
-INC r19
-SBRC r3,6
-RJMP ssetstartB
-INC r19
-RJMP ssetstartB
+;en caso de que al desviar 45 grados se quede en medio de un sector, usar cua +-5 o +-3 para obtener la casilla de inicio?? si no, ir a rutinca cuenta filas (por crear)
+    
+SUBIndid:
+LDI r23,14
+LDI r28,20
+CALL  der45
+ANDI sector,0x03
+CPI sector,1
+BREQ sets15
+RJMP sets03
 
-ssetstartA:
-MOV r16,r19
-MOV r22,r16
-CALL getxy
-MOV r17,r20
-MOV r18,r21
-RJMP stindi;rutina de solucion de sector
+;esta rutina es la conexion entre cuerda y cuenta paso.
+SUBIndi: 
+LDI r23,14
+LDI r28,20
+ANDI sector,0x03
+CPI sector,1
+BREQ ssetsecb
+RJMP ssetseca
 
-ssetstartB:
-LDI r20,8
-ADD r19,r20
-MOV r16,r19
-MOV r22,r16
-CALL getxy
-MOV r17,r20
-MOV r18,r21
-RJMP stindi
-;fin de rutinas de deteccion de objeto
+sets00:
+ldi r22,0
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,0
+ldi r24,0
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+;call pasoadel
+;***
+RJMP deducir
 
-;mueve hacia adelante hasta que se encienda un borde
-stindi:
-CALL adelante
-CALL getbordes
-MOV aux4,r4
-ANDI aux4,0x03
-CPI aux4,0
-BREQ stindi
-;suponiendo que el borde del sector A entra por el bit 0 y que el del b entra por el bit 1...
-CPI aux4,2
-BREQ SsetsecB
-RJMP Ssetseca
+sets03:
+ldi r22,3
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,0
+ldi r24,0
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+;call pasoadel
+;***
+RJMP deducir
+
+sets12:
+ldi r22,12
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,1
+ldi r24,1
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+;call pasoadel
+;***
+RJMP deducir
+
+sets15:
+ldi r22,15
+call getxy
+mov r25,r20
+mov r26,r21
+LDI r27,1
+ldi r24,1
+;*** mover un paso puesto que se empieza desde el borde, no desde el sector
+;call pasoadel
+;***
+RJMP deducir
 
 SsetsecA:
+mov r22, cua
+subi r22,4
+call getxy
+mov r25,r20
+mov r26,r21
 LDI r24,0
 LDI r27,0
-RJMP stindia
+rjmp deducir
 
 SsetsecB:
+mov r22, cua
+inc r22
+inc r22
+inc r22
+inc r22
+call getxy
+mov r25,r20
+mov r26,r21
 LDI r24,1
 LDI r27,1
-RJMP stindib
-
-;Deduce el sector de arranque, el sentido y setea el x y y del carro para cuando esta solo en la pista (INDIVIDUAL)
-stindiAA:
-CP r22,objn
-BREQ RETge
-CALL getxy
-MOV r25,r20
-MOV r26,r21
-POP r0
-POP r0
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-JMP deducir
-
-retge:
-ret
-
-stindiBB:
-LDI r20,8
-ADD r20,r22
-CP r20,objn
-BREQ RETge
-MOV r22,r20
-CALL getxy
-MOV r25,r20
-MOV r26,r21
-POP r0
-POP r0
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-call atras
-JMP deducir
-;MOVer hasta encender una casilla dentro del tablero en mi sector
-
-stindiA:
-CALL adelante
-CALL getioa
-MOV r25,r2
-CPI r25,0
-BREQ stindiA
-LDI r22,0
-SBRC r25,0
-CALL stindiAA
-INC r22
-SBRC r25,1
-CALL stindiAA
-INC r22
-SBRC r25,2
-CALL stindiAA
-INC r22
-SBRC r25,3
-CALL stindiAA
-INC r22
-SBRC r25,4
-CALL stindiAA
-INC r22
-SBRC r25,5
-CALL stindiAA
-INC r22
-SBRC r25,6
-CALL stindiAA
-INC r22
-SBRC r25,7
-CALL stindiAA
-RJMP stindia
-
-stindiB:
-CALL adelante
-CALL getiob
-MOV r30,r3
-CPI r30,0
-BREQ stindiB
-LDI r22,0
-SBRC r30,0
-CALL stindibb
-INC r22
-SBRC r30,1
-CALL stindibb
-INC r22
-SBRC r30,2
-CALL stindibb
-INC r22
-SBRC r30,3
-CALL stindibb
-INC r22
-SBRC r30,4
-CALL stindibb
-INC r22
-SBRC r30,5
-CALL stindibb
-INC r22
-SBRC r30,6
-CALL stindibb
-INC r22
-SBRC r30,7
-CALL stindibb
-RJMP stindib
+RJMP deducir
 
 MOVerright:
 BREQ RETre
@@ -998,7 +1403,6 @@ turnright:
 CALL pasoizq
 call parar
 JMP fordward
-
 
 MOVerup:
 INC r26

@@ -95,6 +95,7 @@ RJMP getioa
 RET
 
 getiobfas:
+in iob,pind
 nop nop nop nop
 in r12,pind
 CPSE iob,r12
