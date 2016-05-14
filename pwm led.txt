@@ -1,0 +1,80 @@
+.device AT90USB1286
+.NOLIST
+.INCLUDE "usb1286def.inc"
+.LIST
+
+.def     Temp =r16       
+.def     pw =r19         
+.org     $0000           
+
+INIT_SP:
+ldi r18,0xff
+out ddrc,r18
+out portc,r18
+
+ ldi r16,low(ramend) 
+ out spl,r16             
+ ldi r16,high(ramend) 
+ out sph,r16
+
+INIT_PORTB:              
+ ser     Temp
+ out     DDRB,Temp       
+ clr     temp
+ out     PORTB,temp      
+ SER R20
+ OUT DDRC, R20
+ CLR R20
+ OUT PORTC, R20
+
+INIT_TIMER:              
+ ldi    temp,0           
+ STS    OCR2B,temp      
+ ldi    temp, 0b10000001 
+ STS    TCCR2A, temp     
+ ldi    temp, 0b00001001 
+ STS    TCCR2B, temp     
+ LDI R16, 0x00
+ STS TCNT2, R16
+                         
+
+
+LOOP:
+
+UP: 
+ STS    OCR2B,pw        
+ inc    pw              
+ rcall  DELAY           
+ cpi    pw,0xFF         
+ brne   UP              
+        
+ SER R20
+ OUT PORTD, R20
+
+DOWN: 
+ STS    OCR2B,pw
+ dec    pw      
+ rcall  DELAY   
+ cpi    pw,0x00 
+ brne   DOWN    
+                
+ CLR R20
+ OUT PORTD, R20
+rjmp LOOP
+
+
+DELAY:          
+; ============================= 
+         ldi  R17, $63
+WGLOOP0: ldi  R18, $C9
+WGLOOP1: dec  R18
+         brne WGLOOP1
+         dec  R17
+         brne WGLOOP0
+; ----------------------------- 
+; delaying 6 cycles:
+         ldi  R17, $02
+WGLOOP2: dec  R17
+         brne WGLOOP2
+; =============================
+ret

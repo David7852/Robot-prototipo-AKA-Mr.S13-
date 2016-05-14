@@ -1,0 +1,160 @@
+;r0 = registro especial (usado por algunas instrucciones de atmel)
+;r1 = registro especial (usado por algunas instrucciones de atmel)
+;r2 = I/O puerto C (sector A)
+;r3 = I/O puerto D (sector B)
+;r4 = I/O puerto F (Bordes bit 0= A hORIzontal, bit 1= B hORIzontal, bit 2 = derecha, bit 3 = izquierda )
+;r5 = I/O puerto B (motores)
+;r6 = angulo del vehiculo
+;.......
+;Variables del sistema
+;r16 = objeto (# casilla)
+;r17 = X objeto
+;r18 = Y objeto
+;r19 = aux 1 (RETurn aux)
+;r20 = aux 2
+;r21 = aux 3
+;r22 = aux 4 (N casilla en busqueda o N de la secuencia)
+;r23 = cuerda (DECimas de segundo, o MULtiplicador de DECimas nescesarias para una distancia especifica) 
+;r24 = sectores (primeros 4 bits: 0000 A, 0001 B. ultimos 4 bits: 0000 derecha, 1000 izquierda, 11111111 es unknow)
+;r25 = aux 5
+;r26 = aux 6
+;r27 = gua : contador de repeticiones de cuerda.
+;r28 = gub : guarda el valor del primer sensor que se encendio en cada salida de la cuerda
+;r29 = cua : guarda valores relacionados a sensores activos, en especifico, el ultimo sensor
+;r30 = cub : guarda la conclusion del recorrido. ff=esta en 90 grados, ee=45 izquieda, dd=45 derecha. cc=avismo.
+;r31 = sentido giro. derecha 0, izquierda 1
+;.......
+;constantes
+;step = numero de veces que debe repetirse un RETardo de X milisegundos para avanzar 8cm (media casilla)
+;giro = numero de veces que debe repetirse un RETardo de X milisegundos para girar 5 grados
+;*** 
+.dseg
+.def ioa=r2
+.def iob=r3
+.def bordes=r4
+.def motores=r5
+.def angle=r6
+
+.def objn=r16
+.def objx=r17
+.def objy=r18
+.def aux1=r19	
+.def aux2=r20
+.def aux3=r21
+.def aux4=r22
+.def cuerda=r23
+.def sector=r24
+.def aux5=r25
+.def aux6=r26
+.def gua=r27
+.def gub=r28
+.def cua=r29
+.def cub=r30
+.def gir=r31
+
+.equ stepstop=20;delay necesario para drenar el desplazamiento de los motores.
+
+.equ stepb=20
+.equ step=20
+.equ giro=15
+.equ mediogiro=7
+
+.equ backcuerda=19
+.equ stepcuerda=19
+.equ girocuerda=2;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
+.equ guamax=14 ;numero de repeticiones maxima para la cuerda en el mismo sentido. comienza en 8, reinicia a 0 para cubrir180 grados
+.equ samples=0xff
+.equ samplesize=10
+.equ motorcount=5
+
+.EQU	MOTOR_1_A	=	PIND1
+.EQU	MOTOR_2_A	=	PIND4
+
+.EQU	MOTOR_1_B	=	PIND3
+.EQU	MOTOR_2_B	=	PIND5
+
+.EQU	OC0A	=	PINB7
+.EQU	OC0B	=	PIND0 
+
+
+
+.cseg 
+.include "usb1286def.inc"
+.org 0000
+LDI r19,0xff
+;OUT portc,r19
+;OUT portd,r19
+;OUT portf,r19
+OUT ddrb,r19
+LDI r19,0
+OUT portb,r19
+OUT ddrd,r19
+OUT ddrf,r19
+OUT ddrc,r19
+call CONF_PWM_MOTORS
+call adelante
+nop
+
+
+;===============================================================;
+;		CONFIGURANDO EL TIPO DE PWM A UTILIZAR					;
+;===============================================================;
+CONF_PWM_MOTORS:
+
+			CLR R16
+			STS TIMSK0, R16
+			OUT TCNT0, R16
+			LDI R16, 0b10_10_00_01 ;Configurar Modo de operacion del temporizador
+			OUT TCCR0A, R16	       ;Configurar Modo de operacion del temporizador
+			LDI R16, 0b0000_0_011  ;Iniciar Cambios de PWM (preescaler)
+			OUT TCCR0B, R16        ;Iniciar Cambios de PWM
+			RET
+
+;***************************************************************;
+;no funcionaba
+;***************************************************************;
+;SETUP:
+;	CLR R16
+;	CLR R17
+;	LDI R16, LOW (RAMEND)
+;	LDI R17, HIGH(RAMEND)
+;	STS SPH, R17
+;	STS SPL, R16
+
+	;CALL LED_MICRO
+;	CALL INIT_PORT_OUT
+;	CALL CONF_PWM_MOTORS
+;	CALL RETARDO_1_SECOND
+;***************************************************************;
+
+;***************************************************************;
+
+;===============================================================;
+;				ADELANTE										;
+;===============================================================;
+ADELANTE:
+		
+		;CALL VERIFICAR_OBJETIVO2
+		
+	
+		CLR R16
+		OUT TCNT0, R16
+
+		LDI R16, 170
+		OUT OCR0A, R16 ;MOTOR DERE
+		CLR R16
+		LDI R16, 180
+		OUT OCR0B, R16 ;MOTOR IZQ
+		
+		CBI PORTD, MOTOR_1_A
+		SBI PORTD,MOTOR_1_B
+		
+		SBI PORTD,MOTOR_2_A
+		CBI PORTD,MOTOR_2_B
+		
+	;	CALL RETARDO_3_SECOND
+	;	CALL RETARDO_EMPUJON
+	;	CALL DETERMINAR_LINEA
+	;	CALL FRENO
+
+		RET
