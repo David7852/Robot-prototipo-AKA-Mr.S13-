@@ -1,0 +1,9 @@
+c:\users\alexei\documents\visual studio 2015\Projects\Stepcalculator\Stepcalculator\bin\Debug\Stepcalculator.exe.config
+c:\users\alexei\documents\visual studio 2015\Projects\Stepcalculator\Stepcalculator\bin\Debug\Stepcalculator.exe
+c:\users\alexei\documents\visual studio 2015\Projects\Stepcalculator\Stepcalculator\bin\Debug\Stepcalculator.pdb
+c:\users\alexei\documents\visual studio 2015\Projects\Stepcalculator\Stepcalculator\obj\Debug\Stepcalculator.csprojResolveAssemblyReference.cache
+c:\users\alexei\documents\visual studio 2015\Projects\Stepcalculator\Stepcalculator\obj\Debug\Stepcalculator.Form1.resources
+c:\users\alexei\documents\visual studio 2015\Projects\Stepcalculator\Stepcalculator\obj\Debug\Stepcalculator.Properties.Resources.resources
+c:\users\alexei\documents\visual studio 2015\Projects\Stepcalculator\Stepcalculator\obj\Debug\Stepcalculator.csproj.GenerateResource.Cache
+c:\users\alexei\documents\visual studio 2015\Projects\Stepcalculator\Stepcalculator\obj\Debug\Stepcalculator.exe
+c:\users\alexei\documents\visual studio 2015\Projects\Stepcalculator\Stepcalculator\obj\Debug\Stepcalculator.pdb

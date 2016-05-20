@@ -64,13 +64,13 @@
 .equ girocuerda=2;un giro es el numero de veces que hay que repetir un delay corto (20 ms es lo mas aDECuado) para generar un desvio igual a 10 grados.
 .equ guamax=14 ;numero de repeticiones maxima para la cuerda en el mismo sentido. comienza en 8, reinicia a 0 para cubrir180 grados
 
-.equ samples=0xff
-.equ samplesize=37
+.equ samples=128
+.equ samplesize=5
+.equ motorcount=25
 
-.equ motorcount=70
-.equ atrascount=80
-.equ izqcount=70
-.equ dercount=70
+.equ atrascount=22
+.equ izqcount=25
+.equ dercount=25
 
 .cseg 
 .include "usb1286def.inc"
@@ -85,14 +85,16 @@ OUT portb,r19
 OUT ddrd,r19
 OUT ddrf,r19
 OUT ddrc,r19
-;ldi r16,124
-;call loop
-;call parar
-;ldi r16,124
-;call loopback
-;ldi r16,30
-;call loopizq
-ldi r16,30
+ldi r16,213
+call loop
+call parar
+ldi r16,213
+call loopback
+call parar
+ldi r16,156
+call loopizq
+call parar
+ldi r16,168
 call loopder
 call stop
 nop
@@ -265,3 +267,48 @@ brne derB
 rjmp derA
 ;****
 
+parar:
+MOV r0,aux1
+MOV r12,r23
+ldi r23,stepstop
+LDI aux1,0xf0
+and motores,aux1
+OUT portb,motores
+ldi r19,0
+CALL waitto;(usar siempre el menor tiempo de espera)
+mov r19,r0
+mov r23,r12
+RET
+
+waitto:
+CALL wait20
+INC r19
+CPSE r19,r23
+RJMP waitto
+RET
+
+wait20:
+MOV r8,r20
+MOV r11,r21
+LDI r20,26
+RJMP wait20A
+
+wait20A:
+LDI r21,0xff
+SUBI r20,1
+BRNE wait20B
+MOV r20,r8
+MOV r21,r11
+RET
+
+wait20B:
+SUBI r21,1
+NOP 
+NOP 
+NOP 
+BREQ wait20A
+RJMP wait20B
+
+stop:
+CALL parar
+RJMP stop

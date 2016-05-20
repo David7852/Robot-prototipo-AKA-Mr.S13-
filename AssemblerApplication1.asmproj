@@ -26,7 +26,8 @@
     <OverrideVtorValue>exception_table</OverrideVtorValue>
     <BootSegment>2</BootSegment>
     <eraseonlaunchrule>0</eraseonlaunchrule>
-    <ExternalProgrammingToolCommand />
+    <ExternalProgrammingToolCommand>
+    </ExternalProgrammingToolCommand>
     <AsfFrameworkConfig>
       <framework-data xmlns="">
         <options />
@@ -39,38 +40,51 @@
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
-    <ExternalProgrammingToolCommandDisabledValue />
+    <ExternalProgrammingToolCommandDisabledValue>C:\Program Files (x86)\Atmel\AVR Tools\Partdescriptionfiles\AT90USB1286.xml</ExternalProgrammingToolCommandDisabledValue>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <ToolchainSettings>
       <AvrAssembler>
         <avrasm.assembler.general.AdditionalIncludeDirectories>
           <ListValues>
-            <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.0.90\avrasm\inc</Value>
-            <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.0.90\avrasm\inc</Value>
+            <Value>%24(PackRepoDir)\Atmel\ATmega_DFP\1.0.98\avrasm\inc</Value>
+            <Value>%24(PackRepoDir)\Atmel\ATmega_DFP\1.0.98\avrasm\inc</Value>
           </ListValues>
         </avrasm.assembler.general.AdditionalIncludeDirectories>
         <avrasm.assembler.general.IncludeFile>usb1286def.inc</avrasm.assembler.general.IncludeFile>
       </AvrAssembler>
     </ToolchainSettings>
-    <PostBuildEvent>"$(SystemRoot)\system32\teensy_loader_cli-master\teensy_loader_cli.exe" -mmcu=atmega32u4 "$(OutputDirectory)\$(OutputFileName).hex"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
     <OutputType>Executable</OutputType>
+    <UsesExternalMakeFile>False</UsesExternalMakeFile>
+    <BuildTarget>all</BuildTarget>
+    <CleanTarget>clean</CleanTarget>
+    <PreBuildEvent>
+    </PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
       <AvrAssembler>
         <avrasm.assembler.general.AdditionalIncludeDirectories>
           <ListValues>
-            <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.0.90\avrasm\inc</Value>
-            <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.0.90\avrasm\inc</Value>
+            <Value>%24(PackRepoDir)\Atmel\ATmega_DFP\1.0.98\avrasm\inc</Value>
+            <Value>%24(PackRepoDir)\Atmel\ATmega_DFP\1.0.98\avrasm\inc</Value>
           </ListValues>
         </avrasm.assembler.general.AdditionalIncludeDirectories>
         <avrasm.assembler.general.IncludeFile>usb1286def.inc</avrasm.assembler.general.IncludeFile>
       </AvrAssembler>
     </ToolchainSettings>
+    <OutputType>Executable</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="cuerda.asm">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="main.asm">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Cuentapasos.asm">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>

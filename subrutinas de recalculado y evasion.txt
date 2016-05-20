@@ -644,26 +644,25 @@ ret
 recalculate:
 sbrc sector,0
 rjmp recalculateb
-sbrs sector,0
-rjmp recalculatea
-
-recalculateb:
-cpi r25,12
-inc r25
-breq derecha90
-dec r25
-dec r25
-rjmp izquierda90
+nop
 
 recalculatea:
-cpi r25,0
 inc r25
-breq izquierda90
+cpi r25,1
+breq toizq
 dec r25
 dec r25
-rjmp derecha90
+rjmp toder
 
-derecha90:
+recalculateb:
+inc r25
+cpi r25,1
+breq toder
+dec r25
+dec r25
+rjmp toizq
+
+toder:
 call pasoder
 call pasoadel
 call pasoizq
@@ -671,9 +670,10 @@ pop r0
 pop r0
 jmp deducir
 
-izquierda90:
+toizq:
 call pasoizq
 call pasoadel
+call pasoder
 pop r0
 pop r0
 jmp deducir
